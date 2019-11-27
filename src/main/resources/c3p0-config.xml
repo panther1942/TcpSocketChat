@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<c3p0-config>
+    <!--默认配置-->
+    <default-config>
+        <property name="initialPoolSize">10</property>
+        <property name="maxIdleTime">30</property>
+        <property name="maxPoolSize">100</property>
+        <property name="minPoolSize">10</property>
+        <property name="maxStatements">200</property>
+    </default-config>
+
+    <!--配置连接池sqlite-->
+    <named-config name="sqlite_user">
+        <property name="driverClass">org.sqlite.JDBC</property>
+        <property name="jdbcUrl">jdbc:sqlite:/home/erika/IdeaProjects/Demo/SocketTest/src/test/resources/user.db</property>
+        <property name="initialPoolSize">10</property>
+        <property name="maxIdleTime">30</property>
+        <property name="maxPoolSize">100</property>
+        <property name="minPoolSize">10</property>
+        <property name="maxStatements">200</property>
+    </named-config>
+</c3p0-config>
