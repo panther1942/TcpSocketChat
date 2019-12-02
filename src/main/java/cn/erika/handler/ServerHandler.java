@@ -2,6 +2,7 @@ package cn.erika.handler;
 
 import cn.erika.core.TcpSocket;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
@@ -38,11 +39,14 @@ public class ServerHandler extends DefaultHandler {
     void display(TcpSocket socket, String message) {
         String id = manager.get(socket);
         String add = socket.getSocket().getRemoteSocketAddress().toString();
-        System.err.println("User: " + id + " From: " + add + " : " + message);
+        log.info("User: " + id + " From: " + add + " : " + message);
     }
 
-    public void send(String target, String msg) throws Exception {
+    public void send(String target, String msg) throws IOException, IllegalArgumentException {
         TcpSocket socket = manager.get(target);
+        if (socket == null) {
+            throw new IllegalArgumentException("连接不存在");
+        }
         write(socket, msg);
     }
 
@@ -50,7 +54,7 @@ public class ServerHandler extends DefaultHandler {
         TcpSocket socket = manager.get(key);
         if (socket != null) {
             manager.del(socket);
-            write(socket, "See you later", DataHead.Type.BYE);
+            write(socket, "See you later", DataHead.BYE);
             try {
                 Thread.sleep(15000);
                 if (!socket.getSocket().isClosed()) {
@@ -70,9 +74,20 @@ public class ServerHandler extends DefaultHandler {
         }
     }
 
-    public void encrypt(String key) throws IOException {
+    public void encrypt(String key) throws IOException, IllegalArgumentException {
         log.info("请求加密通信");
         TcpSocket socket = manager.get(key);
-        write(socket, "Hello World", DataHead.Type.ENCRYPT);
+        if (socket == null) {
+            throw new IllegalArgumentException("连接不存在");
+        }
+        write(socket, "Hello World", DataHead.ENCRYPT);
+    }
+
+    public void sendFile(String key, File file) throws IOException {
+        TcpSocket socket = manager.get(key);
+        if (socket == null) {
+            throw new IllegalArgumentException("连接不存在");
+        }
+        sendFileHead(socket, file);
     }
 }

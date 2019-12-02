@@ -33,10 +33,10 @@ public interface TcpHandler {
      * 将指定的字符串发送过去
      *
      * @param socket 对应的Socket连接
-     * @param msg    要发送的信息 建议使用Base64编码后再发送 防止中文乱码
+     * @param data    要发送的信息
      * @throws IOException 如果发生IO错误
      */
-    void write(TcpSocket socket, String msg) throws IOException;
+    void write(TcpSocket socket, byte[] data) throws IOException;
 
     /**
      * 当需要关闭指定Socket连接的时候 调用此方法

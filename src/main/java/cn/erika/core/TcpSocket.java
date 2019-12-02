@@ -2,9 +2,7 @@ package cn.erika.core;
 
 import org.apache.log4j.Logger;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.HashMap;
 
@@ -63,9 +61,9 @@ public class TcpSocket implements Runnable {
                 handler.read(this, cache, len);
             }
         } catch (IOException e) {
-            log.warn("与服务器失去连接: "+socket.getRemoteSocketAddress().toString());
+            log.warn("与服务器失去连接: " + socket.getRemoteSocketAddress().toString());
 //            e.printStackTrace();
-        }finally {
+        } finally {
             try {
                 handler.close(this);
             } catch (IOException e) {
@@ -81,7 +79,7 @@ public class TcpSocket implements Runnable {
      * @param len  发送数据的实际长度
      * @throws IOException 如果传输过程发生错误
      */
-    public void write(byte[] data, long len) throws IOException {
+    public void write(byte[] data, int len) throws IOException {
         int pos = 0;
         // 这里用pos标记发送数据的长度 每次发送缓冲区大小个字节 直到pos等于数据长度len
         int cacheSize = getAttr(CACHE_SIZE);
@@ -89,7 +87,7 @@ public class TcpSocket implements Runnable {
             out.write(data, pos, cacheSize);
             pos += cacheSize;
         }
-        out.write(data, pos, (int) (len - pos));
+        out.write(data, pos, len - pos);
         out.flush();
     }
 
@@ -114,5 +112,9 @@ public class TcpSocket implements Runnable {
 
     public void delAttr(String k) {
         this.attr.remove(k);
+    }
+
+    public void setHandler(TcpHandler handler) {
+        this.handler = handler;
     }
 }

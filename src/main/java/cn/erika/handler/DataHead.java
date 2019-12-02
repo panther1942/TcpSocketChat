@@ -3,48 +3,33 @@ package cn.erika.handler;
 import java.util.Date;
 
 public class DataHead {
+    public static final int ASC = 0x00;
+    public static final int BIN = 0x01;
+    public static final int READY = 0x02;
+    public static final int DEBUG = 0x03;
+    public static final int INFO = 0x04;
+    public static final int WARN = 0x05;
+    public static final int ERROR = 0x06;
+    public static final int ENCRYPT = 0x10;
+    public static final int RSA = 0x11;
+    public static final int AES = 0x12;
+    public static final int BYE = 0xFF;
+
     // 时间戳
     private Date timestamp;
+    private long pos;
     // 数据长度
     private int len;
-    // 如果发送文件 这里填文件名
-    private String file;
     // 指令
-    private Type order;
+    private int order;
 
-    public enum Type {
-        NONE(0x00), // 不包含特殊含义
-        ACCEPT(0x01), // 接受请求
-        REJECT(0x02), // 拒绝请求
-        DEBUG(0x03), // 调试信息
-        INFO(0x04), // 通知信息
-        WARN(0x05), // 警告信息
-        ERROR(0x06), // 错误信息
-        ENCRYPT(0x10), // 请求加密
-        RSA(0x11), // 这次发送的是RSA公钥
-        AES(0x12), // 这次发送的是AES秘钥
-        BYE(0xFF); // 断开信息
-
-        private int value;
-
-        Type(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-    }
-
-    public DataHead(int len, Type order) {
+    public DataHead() {
         this.timestamp = new Date();
-        this.len = len;
-        this.order = order;
     }
 
-    public DataHead(int len, Type order, String file) {
-        this(len, order);
-        this.file = file;
+    public DataHead(int order) {
+        this();
+        this.order = order;
     }
 
     public Date getTimestamp() {
@@ -55,6 +40,14 @@ public class DataHead {
         this.timestamp = timestamp;
     }
 
+    public long getPos() {
+        return pos;
+    }
+
+    public void setPos(long pos) {
+        this.pos = pos;
+    }
+
     public int getLen() {
         return len;
     }
@@ -63,19 +56,29 @@ public class DataHead {
         this.len = len;
     }
 
-    public String getFile() {
-        return file;
-    }
-
-    public void setFile(String file) {
-        this.file = file;
-    }
-
-    public Type getOrder() {
+    public int getOrder() {
         return order;
     }
 
-    public void setOrder(Type order) {
+    public void setOrder(int order) {
         this.order = order;
+    }
+
+    @Override
+    public String toString() {
+        String timestamp = String.format("%13s", this.timestamp.getTime()).replaceAll(" ", "0");
+        String pos = String.format("%10s", this.pos).replaceAll(" ", "0");
+        String len = String.format("%10s", this.len).replaceAll(" ", "0");
+        String order = String.format("%4s", Integer.toString(this.order)).replaceAll(" ", "0");
+        return timestamp + pos + len + order;
+    }
+
+    public String show() {
+        return "DataHead{" +
+                "timestamp=" + timestamp +
+                ", pos=" + pos +
+                ", len=" + len +
+                ", order=" + order +
+                '}';
     }
 }

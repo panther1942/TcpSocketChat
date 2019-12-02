@@ -8,6 +8,7 @@ import cn.erika.plugins.io.GeneralInput;
 import cn.erika.plugins.io.KeyboardReader;
 import org.apache.log4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
@@ -45,9 +46,10 @@ public class Main {
         String host = ConfigReader.get("listen_addr");
         int port = Integer.parseInt(ConfigReader.get("listen_port"));
         int capacity = Integer.parseInt(ConfigReader.get("wait_capacity"));
+        int cacheSize = Integer.parseInt(ConfigReader.get("cache_size"));
 
         // 新建对象
-        ServerHandler handler = new ServerHandler(charset);
+        ServerHandler handler = new ServerHandler(charset, cacheSize);
         TcpServer server = new TcpServer(host, port, capacity, handler);
         // 尝试启动
         try {
@@ -57,15 +59,22 @@ public class Main {
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line)) {
                 try {
                     String command = line.split("#")[0];
-                    String[] tmp = line.substring(command.length()).split(":");
+                    String[] tmp = line.substring(command.length() + 1).split(":");
+                    String dest;
+                    String msg;
                     switch (command) {
                         case "show":
                             handler.display();
                             break;
                         case "send":
-                            String dest = tmp[0];
-                            String msg = tmp[1];
+                            dest = tmp[0];
+                            msg = line.substring(command.length() + dest.length() + 2);
                             handler.send(dest, msg);
+                            break;
+                        case "file":
+                            dest = tmp[0];
+                            String filename = line.substring(command.length() + dest.length() + 2);
+                            handler.sendFile(dest, new File(filename));
                             break;
                         case "kill":
                             String client = line.substring(4);
@@ -76,6 +85,8 @@ public class Main {
                     }
                 } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
                     log.warn("命令无效");
+                } catch (IllegalArgumentException e) {
+                    log.warn(e.getMessage());
                 }
             }
             // 循环结束关闭服务器
@@ -105,13 +116,16 @@ public class Main {
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line) && !client.isClosed()) {
                 try {
                     String command = line.split("#")[0];
-                    String msg = line.substring(command.length());
+                    String msg = line.substring(command.length() + 1);
                     switch (command) {
                         case "send":
                             handler.send(msg);
                             break;
                         case "encrypt":
                             handler.encrypt();
+                            break;
+                        case "file":
+                            handler.sendFile(new File(msg));
                             break;
                         default:
                             log.warn("不支持的命令");
@@ -125,6 +139,7 @@ public class Main {
             log.info("关闭客户端");
         } catch (IOException e) {
             log.error(e.getMessage());
+            e.printStackTrace();
         }
     }
 }
