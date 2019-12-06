@@ -27,22 +27,12 @@ public interface TcpHandler {
      * @param len    读取到的字节数
      * @throws IOException 如果连接中断或者发生IO错误
      */
-    void read(TcpSocket socket, byte[] data, int len) throws IOException;
-
-    /**
-     * 将指定的字符串发送过去
-     *
-     * @param socket 对应的Socket连接
-     * @param data    要发送的信息
-     * @throws IOException 如果发生IO错误
-     */
-    void write(TcpSocket socket, byte[] data) throws IOException;
+    void deal(TcpSocket socket, byte[] data, int len) throws IOException;
 
     /**
      * 当需要关闭指定Socket连接的时候 调用此方法
      *
      * @param socket 对应的Socket连接
-     * @throws IOException 如果发生IO错误
      */
-    void close(TcpSocket socket) throws IOException;
+    void close(TcpSocket socket);
 }

@@ -58,22 +58,17 @@ public class FileHandler implements TcpHandler, Handler {
     }
 
     @Override
-    public synchronized void read(TcpSocket socket, byte[] data, int len) throws IOException {
+    public synchronized void deal(TcpSocket socket, byte[] data, int len) throws IOException {
         cache.read(socket, data, len);
     }
 
     @Override
-    public void write(TcpSocket socket, byte[] data) throws IOException {
-        socket.write(data, data.length);
-    }
-
-    @Override
-    public void close(TcpSocket socket) throws IOException {
+    public void close(TcpSocket socket) {
 
     }
 
     @Override
-    public void read(TcpSocket socket, DataHead head, byte[] data) throws IOException {
+    public void deal(TcpSocket socket, DataHead head, byte[] data) throws IOException {
         log.debug("处理数据 长度:" + data.length);
         try (FileOutputStream out = new FileOutputStream(file, true)) {
             if (encrypt) {

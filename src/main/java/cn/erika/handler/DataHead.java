@@ -10,18 +10,25 @@ public class DataHead {
     public static final int INFO = 0x04;
     public static final int WARN = 0x05;
     public static final int ERROR = 0x06;
+
     public static final int ENCRYPT = 0x10;
     public static final int RSA = 0x11;
     public static final int AES = 0x12;
+    public static final int REG = 0x13;
+    public static final int FIND = 0x14;
+    public static final int TALK = 0x15;
+    public static final int HIDE = 0x16;
+    public static final int SEEK = 0x17;
+
     public static final int BYE = 0xFF;
 
     // 时间戳
     private Date timestamp;
-    private long pos;
+    private long pos = 0;
     // 数据长度
-    private int len;
+    private int len = 0;
     // 指令
-    private int order;
+    private int order = 0x00;
 
     public DataHead() {
         this.timestamp = new Date();

@@ -33,18 +33,10 @@ public class TcpSocket implements Runnable {
     TcpSocket(Socket socket, TcpHandler handler) throws IOException {
         attr = new HashMap();
         handler.init(this);
-        configCheck();
         this.socket = socket;
         this.handler = handler;
-        this.in = socket.getInputStream();
-        this.out = socket.getOutputStream();
-    }
-
-    private void configCheck() throws IOException {
-        int cacheSize = getAttr(CACHE_SIZE);
-        if (cacheSize < 1024) {
-            throw new IOException("缓冲区不得小于1024字节");
-        }
+        in = socket.getInputStream();
+        out = socket.getOutputStream();
     }
 
 
@@ -58,16 +50,15 @@ public class TcpSocket implements Runnable {
         try {
             while (!socket.isClosed() && (len = in.read(cache)) > -1) {
                 // 向处理器传输缓冲区和有效字节数
-                handler.read(this, cache, len);
+                handler.deal(this, cache, len);
             }
         } catch (IOException e) {
             log.warn("与服务器失去连接: " + socket.getRemoteSocketAddress().toString());
-//            e.printStackTrace();
         } finally {
             try {
-                handler.close(this);
+                close();
             } catch (IOException e) {
-                log.error("关闭连接的过程中发生错误");
+                log.error("断开连接的过程中发生错误: " + e.getMessage());
             }
         }
     }
@@ -89,6 +80,16 @@ public class TcpSocket implements Runnable {
         }
         out.write(data, pos, len - pos);
         out.flush();
+    }
+
+    public void close() throws IOException {
+        if (!socket.isClosed()) {
+            socket.close();
+        }
+    }
+
+    public boolean isClosed() {
+        return socket.isClosed();
     }
 
     /**

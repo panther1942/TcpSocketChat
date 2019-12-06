@@ -1,60 +1,95 @@
 package cn.erika.handler;
 
+import cn.erika.core.TcpClient;
 import cn.erika.core.TcpSocket;
-import cn.erika.plugins.security.AES;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Base64;
+import java.net.InetSocketAddress;
 
 public class ClientHandler extends DefaultHandler {
+    private TcpClient client;
     private TcpSocket socket;
+    private Cache cache;
 
-    public ClientHandler(Charset charset) {
-        super(charset);
-    }
-
-    public ClientHandler(Charset charset, int cacheSize) {
-        super(charset, cacheSize);
+    public ClientHandler() throws IOException {
+        cache = new Cache(charset, this);
+        client = new TcpClient(this);
     }
 
     @Override
     public void accept(TcpSocket socket) throws IOException {
+        log.info("成功连接到服务器");
         this.socket = socket;
     }
 
     @Override
-    public void close(TcpSocket socket) throws IOException {
-        String add = socket.getSocket().getRemoteSocketAddress().toString();
-        log.info("即将关闭连接 From: " + add);
-        write(socket, "See you later", DataHead.BYE);
-        socket.getSocket().close();
-        log.warn("连接中断 From: " + add);
+    public void close(TcpSocket socket) {
+        String host = socket.getSocket().getInetAddress().getHostAddress();
+        int port = socket.getSocket().getPort();
+        log.warn("正在关闭连接 To: " + host + ":" + port);
+        try {
+            if (!socket.isClosed()) {
+                write(socket, "See you later", DataHead.BYE);
+                socket.close();
+            }
+        } catch (IOException e) {
+            log.warn("连接已经断开");
+        }
+    }
+
+    public void close() {
+        log.info("正在关闭客户端");
+        close(socket);
     }
 
     @Override
-    void display(TcpSocket socket, String message) {
-        String add = socket.getSocket().getRemoteSocketAddress().toString();
-        log.info("From: " + add + " : " + message);
+    public void deal(TcpSocket socket, byte[] data, int len) throws IOException {
+        cache.read(socket, data, len);
+    }
+
+    @Override
+    protected void handler(TcpSocket socket, DataHead head, byte[] data) {
+        switch (head.getOrder()) {
+            default:
+                log.warn("未知消息头: " + head.show() + "\n内容: " + new String(data, charset));
+        }
+    }
+
+    @Override
+    protected void display(TcpSocket socket, String message) {
+        boolean isEncrypt = socket.getAttr(ENCRYPT);
+        String add = socket.getSocket().getInetAddress().getHostAddress();
+        System.out.println((isEncrypt ? "" : "!") + "From: [" + add + ":" + socket.getSocket().getPort() + "]" + message);
+    }
+
+    public void connect(InetSocketAddress target) throws IOException {
+        log.info("尝试连接服务器 [" + target.getHostName() + ":" + target.getPort() + "]");
+        this.client.connect(target);
     }
 
     public void send(String msg) throws IOException {
-        write(this.socket, msg);
+        write(socket, msg);
     }
 
     public void encrypt() throws IOException {
-        this.encrypt(socket);
-    }
-
-    public void encrypt(TcpSocket socket) throws IOException {
         log.info("请求加密通信");
         write(socket, "Hello World", DataHead.ENCRYPT);
     }
 
     public void sendFile(File file) throws IOException {
-        sendFileHead(this.socket, file);
+        sendFileHead(socket, file);
+    }
+
+    public void registry(String nickname) throws IOException {
+        write(socket, nickname, DataHead.REG);
+    }
+
+    public void talk(String nickname) throws IOException {
+        write(socket, nickname, DataHead.TALK);
+    }
+
+    public void find() throws IOException {
+        write(socket, null, DataHead.FIND);
     }
 }
