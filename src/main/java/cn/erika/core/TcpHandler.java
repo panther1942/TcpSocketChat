@@ -27,7 +27,7 @@ public interface TcpHandler {
      * @param len    读取到的字节数
      * @throws IOException 如果连接中断或者发生IO错误
      */
-    void deal(TcpSocket socket, byte[] data, int len) throws IOException;
+    void read(TcpSocket socket, byte[] data, int len) throws IOException;
 
     /**
      * 当需要关闭指定Socket连接的时候 调用此方法

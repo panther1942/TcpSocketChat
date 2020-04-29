@@ -28,11 +28,13 @@ public class Main {
                 client(ConfigReader.charset());
             } else {
                 log.info("s : 以服务器的方式启动\n" +
-                        "c : 以客户端的方式启动\n");
+                        "c : 以客户端的方式启动\n" +
+                        "e : 退出\n");
             }
         } else {
             String tip = "s : 以服务器的方式启动\n" +
-                    "c : 以客户端的方式启动\n";
+                    "c : 以客户端的方式启动\n" +
+                    "e : 退出\n";
 
             String function;
             while (!"e".equalsIgnoreCase(function = input.read(tip))) {
@@ -91,7 +93,13 @@ public class Main {
                             server.close(client);
                             break;
                         default:
-                            log.warn("不支持的命令");
+                            log.info("show 显示当前接入的连接\n" +
+                                    "send 发送消息给指定的连接\n" +
+                                    "  例:send#id0:Hello World\n" +
+                                    "file 发送文件给指定的连接\n" +
+                                    "  例:file#id0:~/Document.zip\n" +
+                                    "kill 强制指定的连接下线\n" +
+                                    "exit 退出\n");
                     }
                 } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
                     log.warn("命令无效");
@@ -148,7 +156,16 @@ public class Main {
                             client.find();
                             break;
                         default:
-                            log.warn("不支持的命令");
+                            log.info("encrypt 请求加密通信\n" +
+                                    "reg 注册昵称" +
+                                    "find 显示服务器接入的连接\n" +
+                                    "send 发送消息给服务器\n" +
+                                    "file 发送文件给服务器\n" +
+                                    "  例:file#~/Document.zip\n" +
+                                    "kill 强制指定的连接下线\n" +
+                                    "talk 发送消息给指定的连接\n" +
+                                    "  例:talk#id0:Hello World\n" +
+                                    "exit 退出\n");
                     }
                 } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
                     log.warn("命令无效");

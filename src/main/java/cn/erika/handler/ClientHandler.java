@@ -10,10 +10,10 @@ import java.net.InetSocketAddress;
 public class ClientHandler extends DefaultHandler {
     private TcpClient client;
     private TcpSocket socket;
-    private Cache cache;
+    private Reader reader;
 
     public ClientHandler() throws IOException {
-        cache = new Cache(charset, this);
+        reader = new Reader(charset, this);
         client = new TcpClient(this);
     }
 
@@ -30,7 +30,7 @@ public class ClientHandler extends DefaultHandler {
         log.warn("正在关闭连接 To: " + host + ":" + port);
         try {
             if (!socket.isClosed()) {
-                write(socket, "See you later", DataHead.BYE);
+                write(socket, "See you later", DataHead.Order.BYE);
                 socket.close();
             }
         } catch (IOException e) {
@@ -44,8 +44,8 @@ public class ClientHandler extends DefaultHandler {
     }
 
     @Override
-    public void deal(TcpSocket socket, byte[] data, int len) throws IOException {
-        cache.read(socket, data, len);
+    public void read(TcpSocket socket, byte[] data, int len) throws IOException {
+        reader.read(socket, data, len);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class ClientHandler extends DefaultHandler {
 
     @Override
     protected void display(TcpSocket socket, String message) {
-        boolean isEncrypt = socket.getAttr(ENCRYPT);
+        boolean isEncrypt = socket.getAttr(Extra.ENCRYPT);
         String add = socket.getSocket().getInetAddress().getHostAddress();
         System.out.println((isEncrypt ? "" : "!") + "From: [" + add + ":" + socket.getSocket().getPort() + "]" + message);
     }
@@ -74,7 +74,7 @@ public class ClientHandler extends DefaultHandler {
 
     public void encrypt() throws IOException {
         log.info("请求加密通信");
-        write(socket, "Hello World", DataHead.ENCRYPT);
+        write(socket, keyPair[0], DataHead.Order.ENCRYPT);
     }
 
     public void sendFile(File file) throws IOException {
@@ -82,14 +82,14 @@ public class ClientHandler extends DefaultHandler {
     }
 
     public void registry(String nickname) throws IOException {
-        write(socket, nickname, DataHead.REG);
+        write(socket, nickname, DataHead.Order.REG);
     }
 
     public void talk(String nickname) throws IOException {
-        write(socket, nickname, DataHead.TALK);
+        write(socket, nickname, DataHead.Order.TALK);
     }
 
     public void find() throws IOException {
-        write(socket, null, DataHead.FIND);
+        write(socket, "", DataHead.Order.FIND);
     }
 }

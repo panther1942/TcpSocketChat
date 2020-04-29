@@ -9,9 +9,6 @@ import java.net.InetSocketAddress;
 import java.util.Set;
 
 public class ServerHandler extends DefaultHandler {
-    public static final int NICKNAME = 0x200;
-    public static final int HIDE = 0x201;
-
     private TcpServer server;
     private SocketManager manager = new SocketManager();
 
@@ -24,9 +21,9 @@ public class ServerHandler extends DefaultHandler {
     public void accept(TcpSocket socket) throws IOException {
         log.info("客户端接入: " +
                 socket.getSocket().getRemoteSocketAddress().toString());
-        String id = manager.add(socket, new Cache(charset, this));
-        socket.setAttr(NICKNAME, id);
-        socket.setAttr(HIDE, false);
+        String id = manager.add(socket, new Reader(charset, this));
+        socket.setAttr(Extra.NICKNAME, id);
+        socket.setAttr(Extra.HIDE, false);
     }
 
     @Override
@@ -48,52 +45,70 @@ public class ServerHandler extends DefaultHandler {
     }
 
     @Override
-    public void deal(TcpSocket socket, byte[] data, int len) throws IOException {
+    public void read(TcpSocket socket, byte[] data, int len) throws IOException {
         manager.getCache(socket).read(socket, data, len);
     }
 
     @Override
     protected void handler(TcpSocket socket, DataHead head, byte[] data) throws IOException {
+        String nickName;
         switch (head.getOrder()) {
-            case DataHead.REG:
+            case REG:
                 // 注册
-                socket.setAttr(NICKNAME, new String(data, charset));
-                write(socket, "Registry Successful");
+                nickName = new String(data, charset);
+                if ("".equals(nickName)) {
+                    write(socket, "昵称不能为空", DataHead.Order.REJECT);
+                } else {
+                    if (manager.getByNickname(nickName) != null) {
+                        write(socket, "昵称已被使用", DataHead.Order.REJECT);
+                    } else {
+                        socket.setAttr(Extra.NICKNAME, nickName);
+                        write(socket, "昵称注册成功", DataHead.Order.ACCEPT);
+                    }
+                }
                 break;
-            case DataHead.FIND:
+            case FIND:
                 // 查找
                 Set<String> list = manager.linksInfo();
                 StringBuilder buffer = new StringBuilder();
                 for (String name : list) {
-                    boolean hide = manager.get(name).getAttr(HIDE);
+                    boolean hide = manager.get(name).getAttr(Extra.HIDE);
+                    if (socket.equals(manager.get(name))) {
+                        continue;
+                    }
                     if (!hide) {
-                        buffer.append(name).append(":");
+                        nickName = manager.get(name).getAttr(Extra.NICKNAME);
+                        buffer.append(nickName).append(":");
                     }
                 }
-                buffer.deleteCharAt(buffer.length() - 1);
+                if (buffer.length() > 1) {
+                    buffer.deleteCharAt(buffer.length() - 1);
+                } else {
+                    buffer.append("当前没有其他用户");
+                }
                 write(socket, buffer.toString());
                 break;
-            case DataHead.TALK:
+            case TALK:
                 // 聊天
                 String tmp = new String(data, charset);
                 String nickname = tmp.split(":")[0];
                 String message = tmp.substring(nickname.length() + 1);
                 TcpSocket dest = manager.getByNickname(nickname);
                 if (dest != null) {
-                    String from = socket.getAttr(NICKNAME);
+                    String from = socket.getAttr(Extra.NICKNAME);
                     write(dest, from + ":" + message);
                 } else {
                     write(socket, "未找到昵称: " + nickname);
                 }
                 break;
-            case DataHead.HIDE:
+            case HIDE:
                 // 不允许查找
-                socket.setAttr(HIDE, true);
+                socket.setAttr(Extra.HIDE, true);
                 write(socket, "已禁止查找");
                 break;
-            case DataHead.SEEK:
+            case SEEK:
                 // 允许查找
-                socket.setAttr(HIDE, false);
+                socket.setAttr(Extra.HIDE, false);
                 write(socket, "已允许查找");
                 break;
             default:
@@ -103,7 +118,7 @@ public class ServerHandler extends DefaultHandler {
 
     @Override
     protected void display(TcpSocket socket, String message) {
-        boolean isEncrypt = socket.getAttr(ENCRYPT);
+        boolean isEncrypt = socket.getAttr(Extra.ENCRYPT);
         String id = manager.get(socket);
         String add = socket.getSocket().getInetAddress().getHostAddress();
         System.out.println((isEncrypt ? "" : "!") + "User: " + id + " From: [" + add + ":" + socket.getSocket().getPort() + "]" + message);
@@ -125,7 +140,7 @@ public class ServerHandler extends DefaultHandler {
         TcpSocket socket = manager.get(key);
         if (socket != null) {
             manager.del(socket);
-            write(socket, "See you later", DataHead.BYE);
+            write(socket, "See you later", DataHead.Order.BYE);
             new Thread(() -> {
                 try {
                     Thread.sleep(15000);
@@ -156,7 +171,7 @@ public class ServerHandler extends DefaultHandler {
         if (socket == null) {
             throw new IOException("连接不存在");
         }
-        write(socket, "Hello World", DataHead.ENCRYPT);
+        write(socket, "Hello World", DataHead.Order.ENCRYPT);
     }
 
     public void sendFile(String key, File file) throws IOException {

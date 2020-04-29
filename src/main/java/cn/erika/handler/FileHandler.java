@@ -15,7 +15,7 @@ public class FileHandler implements TcpHandler, Handler {
 
     private TcpSocket socket;
     private TcpHandler handler;
-    private Cache cache;
+    private Reader reader;
 
     private File file;
     private Charset charset = Charset.forName("UTF-8");
@@ -28,14 +28,14 @@ public class FileHandler implements TcpHandler, Handler {
 
 
     FileHandler(TcpSocket socket, TcpHandler handler, String filename, long fileLength) throws IOException {
-        this.cache = new Cache(charset, this);
+        this.reader = new Reader(charset, this);
         this.socket = socket;
         this.handler = handler;
         this.file = new File(filename);
         this.fileLength = fileLength;
-        this.encrypt = socket.getAttr(DefaultHandler.ENCRYPT);
+        this.encrypt = socket.getAttr(Extra.ENCRYPT);
         if (encrypt) {
-            this.password = socket.getAttr(DefaultHandler.PASSWORD);
+            this.password = socket.getAttr(Extra.PASSWORD);
         }
 
         this.socket.setHandler(this);
@@ -58,13 +58,13 @@ public class FileHandler implements TcpHandler, Handler {
     }
 
     @Override
-    public synchronized void deal(TcpSocket socket, byte[] data, int len) throws IOException {
-        cache.read(socket, data, len);
+    public void close(TcpSocket socket) {
+
     }
 
     @Override
-    public void close(TcpSocket socket) {
-
+    public void read(TcpSocket socket, byte[] data, int len) throws IOException {
+        reader.read(socket, data, len);
     }
 
     @Override

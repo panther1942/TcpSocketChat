@@ -3,38 +3,60 @@ package cn.erika.handler;
 import java.util.Date;
 
 public class DataHead {
-    public static final int ASC = 0x00;
-    public static final int BIN = 0x01;
-    public static final int READY = 0x02;
-    public static final int DEBUG = 0x03;
-    public static final int INFO = 0x04;
-    public static final int WARN = 0x05;
-    public static final int ERROR = 0x06;
+    public static final int LEN = 13 + 10 + 10 + 4 + 256;
 
-    public static final int ENCRYPT = 0x10;
-    public static final int RSA = 0x11;
-    public static final int AES = 0x12;
-    public static final int REG = 0x13;
-    public static final int FIND = 0x14;
-    public static final int TALK = 0x15;
-    public static final int HIDE = 0x16;
-    public static final int SEEK = 0x17;
+    public enum Order {
+        ASC(0x00),
+        BIN(0x01),
+        READY(0x02),
+        DEBUG(0x03),
+        INFO(0x04),
+        WARN(0x05),
+        ERROR(0x06),
+        ENCRYPT(0x10),
+        RSA(0x11),
+        AES(0x12),
+        REG(0x13),
+        FIND(0x14),
+        TALK(0x15),
+        HIDE(0x16),
+        SEEK(0x17),
+        ACCEPT(0x18),
+        REJECT(0x19),
+        BYE(0xFF);
 
-    public static final int BYE = 0xFF;
+        public int value;
 
-    // 时间戳
+        Order(int value) {
+            this.value = value;
+        }
+
+        public static Order getByValue(int value) {
+            for (Order order : Order.values()) {
+                if (order.value == value) {
+                    return order;
+                }
+            }
+            return null;
+        }
+    }
+
+    // 时间戳 13
     private Date timestamp;
+    // 数据偏移量 10
     private long pos = 0;
-    // 数据长度
+    // 数据长度 10
     private int len = 0;
-    // 指令
-    private int order = 0x00;
+    // 指令 4
+    private Order order = Order.ASC;
+    // 签名 256
+    private byte[] sign;
 
     public DataHead() {
         this.timestamp = new Date();
     }
 
-    public DataHead(int order) {
+    public DataHead(Order order) {
         this();
         this.order = order;
     }
@@ -63,12 +85,24 @@ public class DataHead {
         this.len = len;
     }
 
-    public int getOrder() {
+    public Order getOrder() {
         return order;
     }
 
-    public void setOrder(int order) {
+    public void setOrder(Order order) {
         this.order = order;
+    }
+
+    public void setOrder(int order) {
+        this.order = Order.getByValue(order);
+    }
+
+    public byte[] getSign() {
+        return sign;
+    }
+
+    public void setSign(byte[] sign) {
+        this.sign = sign;
     }
 
     @Override
@@ -76,7 +110,7 @@ public class DataHead {
         String timestamp = String.format("%13s", this.timestamp.getTime()).replaceAll(" ", "0");
         String pos = String.format("%10s", this.pos).replaceAll(" ", "0");
         String len = String.format("%10s", this.len).replaceAll(" ", "0");
-        String order = String.format("%4s", Integer.toString(this.order)).replaceAll(" ", "0");
+        String order = String.format("%4s", Integer.toString(this.order.value)).replaceAll(" ", "0");
         return timestamp + pos + len + order;
     }
 

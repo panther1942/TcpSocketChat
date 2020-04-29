@@ -10,7 +10,7 @@ class SocketManager {
     private Logger log = Logger.getLogger(this.getClass().getName());
 
     private HashMap<String, TcpSocket> links = new HashMap<>();
-    private HashMap<TcpSocket, Cache> cachePool = new HashMap<>();
+    private HashMap<TcpSocket, Reader> cachePool = new HashMap<>();
     private int order = 0;
 
     private boolean flag = false;
@@ -19,28 +19,24 @@ class SocketManager {
         @Override
         public void run() {
             log.debug("开始运行定时清理程序");
-            LinkedList<String> tmp = new LinkedList<>();
-            for (String key : links.keySet()) {
-                TcpSocket socket = links.get(key);
+            Iterator<Map.Entry<String, TcpSocket>> it = links.entrySet().iterator();
+            int count = 0;
+            while (it.hasNext()) {
+                Map.Entry<String, TcpSocket> en = it.next();
+                TcpSocket socket = en.getValue();
                 if (socket.isClosed()) {
-                    tmp.add(key);
+                    it.remove();
+                    count++;
                 }
             }
-            log.debug("清除无效连接[" + tmp.size() + "]");
-            for (String key : tmp) {
-                links.remove(key);
-            }
-            if (links.size() == 0) {
-                timer.cancel();
-                flag = false;
-            }
+            log.info("清除无效连接[" + count + "]");
         }
     };
 
-    String add(TcpSocket socket, Cache cache) throws IOException {
+    String add(TcpSocket socket, Reader reader) throws IOException {
         String id = "id" + this.order++;
         links.put(id, socket);
-        cachePool.put(socket, cache);
+        cachePool.put(socket, reader);
         if (!flag) {
             timer.schedule(task, 0, 15000);
             flag = true;
@@ -54,7 +50,7 @@ class SocketManager {
 
     TcpSocket getByNickname(String nickname) {
         for (String key : links.keySet()) {
-            String _nickname = links.get(key).getAttr(ServerHandler.NICKNAME);
+            String _nickname = links.get(key).getAttr(Extra.NICKNAME);
             if (_nickname.equals(nickname)) {
                 return this.links.get(key);
             }
@@ -71,7 +67,7 @@ class SocketManager {
         return null;
     }
 
-    Cache getCache(TcpSocket socket) {
+    Reader getCache(TcpSocket socket) {
         return cachePool.get(socket);
     }
 

@@ -21,7 +21,7 @@ public class TcpSocket implements Runnable {
     private OutputStream out;
 
     // 缓冲区大小
-    public static final int CACHE_SIZE = 0x0;
+//    public static final int CACHE_SIZE = 0x0;
 
     /**
      * 默认构造方法 需要一个Socket对象和一个处理器
@@ -43,14 +43,14 @@ public class TcpSocket implements Runnable {
     @Override
     public void run() {
         // 缓冲区 如果初始化中未设置缓冲区大小将使用默认值4096 即4k
-        int cacheSize = getAttr(CACHE_SIZE);
+        int cacheSize = getAttr(Attribute.Standard.CACHE_SIZE);
         byte[] cache = new byte[cacheSize];
         // 读取到的字节数 如果为-1说明连接中断
         int len;
         try {
             while (!socket.isClosed() && (len = in.read(cache)) > -1) {
                 // 向处理器传输缓冲区和有效字节数
-                handler.deal(this, cache, len);
+                handler.read(this, cache, len);
             }
         } catch (IOException e) {
             log.warn("与服务器失去连接: " + socket.getRemoteSocketAddress().toString());
@@ -73,7 +73,7 @@ public class TcpSocket implements Runnable {
     public void write(byte[] data, int len) throws IOException {
         int pos = 0;
         // 这里用pos标记发送数据的长度 每次发送缓冲区大小个字节 直到pos等于数据长度len
-        int cacheSize = getAttr(CACHE_SIZE);
+        int cacheSize = getAttr(Attribute.Standard.CACHE_SIZE);
         while (len - pos > cacheSize) {
             out.write(data, pos, cacheSize);
             pos += cacheSize;
@@ -102,12 +102,12 @@ public class TcpSocket implements Runnable {
     }
 
     @SuppressWarnings("HashMap中存放多种类型的数值 因此忽略强转警告")
-    public void setAttr(int k, Object v) {
+    public void setAttr(Attribute k, Object v) {
         this.attr.put(k, v);
     }
 
     @SuppressWarnings("HashMap中存放多种类型的数值 因此忽略强转警告")
-    public <T> T getAttr(int k) {
+    public <T> T getAttr(Attribute k) {
         return (T) this.attr.get(k);
     }
 

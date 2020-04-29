@@ -8,7 +8,7 @@ import java.nio.charset.Charset;
 import java.util.Date;
 
 
-public class Cache {
+public class Reader {
     private Logger log = Logger.getLogger(this.getClass().getName());
     private Charset charset;
     private Handler handler;
@@ -17,7 +17,7 @@ public class Cache {
     private byte[] cacheTmp = new byte[0];
     private int pos = 0;
 
-    Cache(Charset charset, Handler handler) {
+    Reader(Charset charset, Handler handler) {
         this.charset = charset;
         this.handler = handler;
     }
@@ -45,7 +45,7 @@ public class Cache {
                 head = null;
                 cacheTmp = new byte[len - available];
                 System.arraycopy(data, available, cacheTmp, 0, len - available);
-                if (len - available > 37) {
+                if (len - available > DataHead.LEN) {
                     getHead(cacheTmp, len - available);
                     cacheTmp = new byte[0];
                 }
@@ -65,18 +65,21 @@ public class Cache {
 
     private void getHead(byte[] data, int len) {
         log.debug("读取数据头");
-        byte[] bHead = new byte[37];
-        System.arraycopy(data, 0, bHead, 0, 37);
+        byte[] bHead = new byte[DataHead.LEN];
+        System.arraycopy(data, 0, bHead, 0, DataHead.LEN);
         String strHead = new String(bHead, charset);
         head = new DataHead();
         head.setTimestamp(new Date(Long.parseLong(strHead.substring(0, 13))));
         head.setPos(Integer.parseInt(strHead.substring(13, 23)));
         head.setLen(Integer.parseInt(strHead.substring(23, 33)));
         head.setOrder(Integer.parseInt(strHead.substring(33, 37)));
+        byte[] sign = new byte[256];
+        System.arraycopy(data, 37, sign, 0, 256);
+        head.setSign(sign);
         log.debug(head.show());
         cache = new byte[head.getLen()];
-        System.arraycopy(data, 37, cache, 0, len - 37);
-        pos = len - 37;
+        System.arraycopy(data, DataHead.LEN, cache, 0, len - DataHead.LEN);
+        pos = len - DataHead.LEN;
         log.debug("数据头处理完成");
     }
 }
