@@ -30,7 +30,7 @@ public abstract class DefaultHandler extends CommonHandler {
 
     private HashMap<Integer, Boolean> flags = new HashMap<>();
 
-    enum Action {
+    public enum Action {
         CLOSE_AFTER_FINISHED(0x01),
         DELETE_FILE_AFTER_FINISHED(0x02);
 
@@ -139,7 +139,7 @@ public abstract class DefaultHandler extends CommonHandler {
                     password = AES.randomPassword(20);
                     socket.setAttr(Extra.PASSWORD, password);
                     try {
-                        log.debug("发送AES秘钥");
+                        log.debug("发送AES秘钥: [" + password + "]");
                         write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.AES));
                         socket.setAttr(Extra.ENCRYPT, true);
                     } catch (Exception e) {
@@ -185,7 +185,7 @@ public abstract class DefaultHandler extends CommonHandler {
                     log.info("收到文件: " + file.getName());
                     try {
                         log.debug("切换处理器");
-                        new FileHandler(socket, this, file.getName(), length, getFlag(Action.DELETE_FILE_AFTER_FINISHED));
+                        new FileHandler(socket, this, file.getName(), length);
                         head.setOrder(DataHead.Order.FILE_RECEIVE_READY);
                     } catch (IOException e) {
                         log.error("发生读写错误: " + e.getMessage());
@@ -251,6 +251,14 @@ public abstract class DefaultHandler extends CommonHandler {
                 log.info("进度: " + df.format(pos / (double) file.length()));
             }
             log.debug("发送完成");
+            if (getFlag(Action.DELETE_FILE_AFTER_FINISHED)) {
+                log.info("删除原始文件: " + file.getAbsolutePath());
+                if (file.delete()) {
+                    log.info("原始文件已删除");
+                } else {
+                    log.warn("无法删除原始文件");
+                }
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }

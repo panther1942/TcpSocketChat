@@ -1,10 +1,8 @@
 package cn.erika.handler;
 
-import cn.erika.core.TcpHandler;
 import cn.erika.core.TcpSocket;
 import cn.erika.plugins.io.ConfigReader;
 import cn.erika.plugins.security.AES;
-import cn.erika.plugins.security.RSA;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -55,10 +53,9 @@ public class FileHandler extends CommonHandler {
      * @param handler             原先的处理器,传输完成需要交回控制权
      * @param filename            传输的文件名
      * @param fileLength          传输的文件长度
-     * @param deleteAfterFinished 是否在传输完成后删除原始文件
      * @throws IOException 如果传输过程发生错误则抛出该异常
      */
-    FileHandler(TcpSocket socket, DefaultHandler handler, String filename, long fileLength, boolean deleteAfterFinished) throws IOException {
+    FileHandler(TcpSocket socket, DefaultHandler handler, String filename, long fileLength) throws IOException {
         this.reader = new Reader(charset, this);
         this.socket = socket;
         this.handler = handler;
@@ -70,7 +67,6 @@ public class FileHandler extends CommonHandler {
             this.password = socket.getAttr(Extra.PASSWORD);
         }
 
-        this.deleteAfterFinished = deleteAfterFinished;
         this.socket.setHandler(this);
 
         log.info("保存文件在: " + file.getAbsolutePath());
@@ -121,15 +117,7 @@ public class FileHandler extends CommonHandler {
         }
         if (filePos == fileLength) {
             this.socket.setHandler(handler);
-            handler.write(this.socket, "接收成功", DataHead.Order.FILE_RECEIVE_FINISHED);
-            if (deleteAfterFinished) {
-                log.info("删除原始文件: " + file.getAbsolutePath());
-                if (file.delete()) {
-                    log.info("原始文件已删除");
-                } else {
-                    log.warn("无法删除原始文件");
-                }
-            }
+            handler.write(this.socket, file.getAbsolutePath(), DataHead.Order.FILE_RECEIVE_FINISHED);
             log.debug("交回控制权");
             log.info("传输完成");
         }
