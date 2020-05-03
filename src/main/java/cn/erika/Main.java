@@ -10,22 +10,24 @@ import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 
 public class Main {
+    // 日志记录
     private static Logger log = Logger.getLogger(Main.class);
+    // 通过键盘输入
     private static GeneralInput input = KeyboardReader.getInstance();
 
     public static void main(String[] args) throws IOException, SQLException, NoSuchAlgorithmException {
         System.out.println("Hello world");
 
+        // 检测输入命令 s: 服务器 c: 客户端 e: 退出
         if (args.length > 0) {
             if ("s".equalsIgnoreCase(args[0])) {
-                server(ConfigReader.charset());
+                server();
             } else if ("c".equalsIgnoreCase(args[0])) {
-                client(ConfigReader.charset());
+                client();
             } else {
                 log.info("s : 以服务器的方式启动\n" +
                         "c : 以客户端的方式启动\n" +
@@ -40,10 +42,10 @@ public class Main {
             while (!"e".equalsIgnoreCase(function = input.read(tip))) {
                 switch (function) {
                     case "s":
-                        server(ConfigReader.charset());
+                        server();
                         break;
                     case "c":
-                        client(ConfigReader.charset());
+                        client();
                         break;
                     default:
                         log.warn("命令无效");
@@ -53,19 +55,17 @@ public class Main {
         }
     }
 
-    private static void server(Charset charset) throws IOException {
-        // 读配置文件
-        String host = ConfigReader.get("listen_addr");
-        int port = Integer.parseInt(ConfigReader.get("listen_port"));
-        int cacheSize = Integer.parseInt(ConfigReader.get("cache_size"));
-
+    private static void server() throws IOException {
         // 新建对象
         ServerHandler server = new ServerHandler();
-        server.setCacheSize(cacheSize);
-        server.setCharset(charset);
+        server.setCacheSize(Integer.parseInt(ConfigReader.get("cache_size")));
+        server.setCharset(ConfigReader.charset());
         // 尝试启动
         try {
-            server.listen(new InetSocketAddress(host, port));
+            server.listen(new InetSocketAddress(
+                    ConfigReader.get("listen_addr"),
+                    Integer.parseInt(ConfigReader.get("listen_port"))
+            ));
             // 命令解析部分
             String line;
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line)) {
@@ -118,18 +118,17 @@ public class Main {
         }
     }
 
-    private static void client(Charset charset) {
-        // 读取配置文件
-        String host = ConfigReader.get("server_addr");
-        int port = Integer.parseInt(ConfigReader.get("server_port"));
-        int cacheSize = Integer.parseInt(ConfigReader.get("cache_size"));
+    private static void client() {
         // 新建对象
         try {
             ClientHandler client = new ClientHandler();
-            client.setCacheSize(cacheSize);
-            client.setCharset(charset);
+            client.setCacheSize(Integer.parseInt(ConfigReader.get("cache_size")));
+            client.setCharset(ConfigReader.charset());
             // 尝试启动
-            client.connect(new InetSocketAddress(host, port));
+            client.connect(new InetSocketAddress(
+                    ConfigReader.get("server_addr"),
+                    Integer.parseInt(ConfigReader.get("server_port"))
+            ));
             //命令解析部分
             String line;
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line)) {
@@ -144,7 +143,13 @@ public class Main {
                             client.encrypt();
                             break;
                         case "file":
-                            client.sendFile(new File(msg));
+                            if (msg.split("#").length > 1) {
+                                String file = msg.substring(0, msg.lastIndexOf("#"));
+                                String filename = msg.substring(msg.lastIndexOf("#")+1, msg.length());
+                                client.sendFile(new File(file), filename);
+                            } else {
+                                client.sendFile(new File(msg));
+                            }
                             break;
                         case "reg":
                             client.registry(msg);
@@ -168,7 +173,7 @@ public class Main {
                                     "exit 退出\n");
                     }
                 } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
-                    log.warn("命令无效");
+                    log.warn("命令无效: "+e.getMessage());
                 }
             }
             // 循环结束关闭客户端

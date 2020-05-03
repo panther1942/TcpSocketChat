@@ -57,13 +57,13 @@ public class ServerHandler extends DefaultHandler {
                 // 注册
                 nickName = new String(data, charset);
                 if ("".equals(nickName)) {
-                    write(socket, "昵称不能为空", DataHead.Order.REJECT);
+                    write(socket, "昵称不能为空", DataHead.Order.WARN);
                 } else {
                     if (manager.getByNickname(nickName) != null) {
-                        write(socket, "昵称已被使用", DataHead.Order.REJECT);
+                        write(socket, "昵称已被使用", DataHead.Order.WARN);
                     } else {
                         socket.setAttr(Extra.NICKNAME, nickName);
-                        write(socket, "昵称注册成功", DataHead.Order.ACCEPT);
+                        write(socket, "昵称注册成功", DataHead.Order.INFO);
                     }
                 }
                 break;
@@ -134,6 +134,7 @@ public class ServerHandler extends DefaultHandler {
 
     public void close() throws IOException {
         server.shutdown();
+        manager.shutdown();
     }
 
     public void close(String key) throws IOException {
@@ -179,6 +180,6 @@ public class ServerHandler extends DefaultHandler {
         if (socket == null) {
             throw new IOException("连接不存在");
         }
-        sendFileHead(socket, file);
+        sendFileHead(socket, file, file.getAbsolutePath());
     }
 }

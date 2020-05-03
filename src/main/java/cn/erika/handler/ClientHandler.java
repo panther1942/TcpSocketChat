@@ -51,6 +51,12 @@ public class ClientHandler extends DefaultHandler {
     @Override
     protected void handler(TcpSocket socket, DataHead head, byte[] data) {
         switch (head.getOrder()) {
+            case FILE_RECEIVE_FINISHED:
+                log.info("文件传输完成: " + new String(data, charset));
+                if (getFlag(Action.CLOSE_AFTER_FINISHED)) {
+                    close();
+                }
+                break;
             default:
                 log.warn("未知消息头: " + head.show() + "\n内容: " + new String(data, charset));
         }
@@ -78,7 +84,11 @@ public class ClientHandler extends DefaultHandler {
     }
 
     public void sendFile(File file) throws IOException {
-        sendFileHead(socket, file);
+        sendFileHead(socket, file, file.getAbsolutePath());
+    }
+
+    public void sendFile(File file, String filename) throws IOException {
+        sendFileHead(socket, file, filename);
     }
 
     public void registry(String nickname) throws IOException {

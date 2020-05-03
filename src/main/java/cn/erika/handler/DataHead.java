@@ -3,26 +3,26 @@ package cn.erika.handler;
 import java.util.Date;
 
 public class DataHead {
-    public static final int LEN = 13 + 10 + 10 + 4 + 256;
+    static final int LEN = 13 + 10 + 10 + 4 + 256;
 
     public enum Order {
         ASC(0x00),
         BIN(0x01),
-        READY(0x02),
-        DEBUG(0x03),
-        INFO(0x04),
-        WARN(0x05),
-        ERROR(0x06),
-        ENCRYPT(0x10),
-        RSA(0x11),
-        AES(0x12),
-        REG(0x13),
-        FIND(0x14),
-        TALK(0x15),
-        HIDE(0x16),
-        SEEK(0x17),
-        ACCEPT(0x18),
-        REJECT(0x19),
+        FILE_RECEIVE_READY(0x02),
+        FILE_RECEIVE_REFUSE(0x03),
+        FILE_RECEIVE_FINISHED(0x04),
+        DEBUG(0x10),
+        INFO(0x11),
+        WARN(0x12),
+        ERROR(0x13),
+        ENCRYPT(0x14),
+        RSA(0x21),
+        AES(0x22),
+        REG(0x23),
+        FIND(0x24),
+        TALK(0x25),
+        HIDE(0x26),
+        SEEK(0x27),
         BYE(0xFF);
 
         public int value;

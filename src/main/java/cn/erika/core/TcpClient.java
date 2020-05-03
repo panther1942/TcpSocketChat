@@ -25,9 +25,13 @@ public class TcpClient {
 
     public void connect(InetSocketAddress address) throws IOException {
         try {
+            // 先尝试Socket连接服务器
             socket.connect(address);
+            // 连接成功再创建TcpSocket对象
             TcpSocket tcpSocket = new TcpSocket(socket, handler);
+            // 开一个线程用来读取数据
             new Thread(tcpSocket).start();
+            // 然后交给处理器处理读和写操作
             handler.accept(tcpSocket);
         } catch (IOException e) {
             throw new IOException("无法连接到服务器: " + e.getMessage());

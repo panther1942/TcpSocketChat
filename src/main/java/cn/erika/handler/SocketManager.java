@@ -13,7 +13,6 @@ class SocketManager {
     private HashMap<TcpSocket, Reader> cachePool = new HashMap<>();
     private int order = 0;
 
-    private boolean flag = false;
     private Timer timer = new Timer();
     private TimerTask task = new TimerTask() {
         @Override
@@ -33,14 +32,18 @@ class SocketManager {
         }
     };
 
+    SocketManager() {
+        timer.schedule(task, 0, 15000);
+    }
+
+    void shutdown(){
+        timer.cancel();
+    }
+
     String add(TcpSocket socket, Reader reader) throws IOException {
         String id = "id" + this.order++;
         links.put(id, socket);
         cachePool.put(socket, reader);
-        if (!flag) {
-            timer.schedule(task, 0, 15000);
-            flag = true;
-        }
         return id;
     }
 

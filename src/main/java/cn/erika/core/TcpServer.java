@@ -37,7 +37,6 @@ public class TcpServer implements Runnable {
     public void listen() throws IOException {
         log.info("尝试启动服务器 监听: [" +
                 address.getHostName() + ":" + address.getPort() + "]");
-
         server = new ServerSocket();
         server.bind(address);
         new Thread(this).start();
@@ -52,21 +51,19 @@ public class TcpServer implements Runnable {
                 Socket socket = null;
                 try {
                     socket = server.accept();
-                } catch (IOException e) {
-                    this.log.error("处理接入连接时发生错误: " + e.getMessage());
-                }
-                if (socket != null) {
                     try {
                         TcpSocket tcpSocket = new TcpSocket(socket, handler);
                         new Thread(tcpSocket).start();
                         handler.accept(tcpSocket);
                     } catch (IOException e) {
-                        this.log.error("无法获取IO流: " + e.getMessage());
+                        this.log.error("无法获取IO流", e);
                     }
+                } catch (IOException e) {
+                    this.log.warn("连接被迫关闭", e);
                 }
             }
         } catch (NumberFormatException e) {
-            this.log.error("配置文件无效: " + e.getMessage());
+            this.log.error("配置文件无效", e);
         }
     }
 

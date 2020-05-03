@@ -22,25 +22,22 @@
             </properties>
         </profile>
     </profiles>
-    <modules>
-        <module>../Demo5</module>
-    </modules>
 
     <build>
         <resources>
             <resource>
-                <directory>src/cn.erika.main/java</directory>
+                <directory>src/main/java</directory>
                 <includes>
                     <include>**/*.xml</include>
                     <include>**/*.properties</include>
                 </includes>
             </resource>
-            <resource>
-                <directory>src/cn.erika.main/resources</directory>
+            <!--<resource>
+                <directory>src/main/resources</directory>
                 <includes>
                     <include>**/**</include>
                 </includes>
-            </resource>
+            </resource>-->
             <resource>
                 <directory>src/test/java</directory>
                 <includes>

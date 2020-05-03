@@ -20,9 +20,6 @@ public class TcpSocket implements Runnable {
     private InputStream in;
     private OutputStream out;
 
-    // 缓冲区大小
-//    public static final int CACHE_SIZE = 0x0;
-
     /**
      * 默认构造方法 需要一个Socket对象和一个处理器
      *
@@ -31,10 +28,11 @@ public class TcpSocket implements Runnable {
      * @throws IOException 如果配置无效或者获取IO流失败
      */
     TcpSocket(Socket socket, TcpHandler handler) throws IOException {
-        attr = new HashMap();
-        handler.init(this);
+        this.attr = new HashMap();
         this.socket = socket;
         this.handler = handler;
+        // 初始化Socket属性
+        handler.init(this);
         in = socket.getInputStream();
         out = socket.getOutputStream();
     }

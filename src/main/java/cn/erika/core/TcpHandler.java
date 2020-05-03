@@ -1,7 +1,12 @@
 package cn.erika.core;
 
+import cn.erika.handler.DataHead;
+
 import java.io.IOException;
 
+/**
+ * 规定一些处理器必须要做的动作
+ */
 public interface TcpHandler {
     /**
      * 初始化连接
@@ -28,6 +33,8 @@ public interface TcpHandler {
      * @throws IOException 如果连接中断或者发生IO错误
      */
     void read(TcpSocket socket, byte[] data, int len) throws IOException;
+
+    void deal(TcpSocket socket, DataHead head, byte[] data) throws IOException;
 
     /**
      * 当需要关闭指定Socket连接的时候 调用此方法

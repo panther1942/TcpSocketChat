@@ -5,13 +5,13 @@ import java.util.ResourceBundle;
 
 public class ConfigReader {
 
-    private static ResourceBundle res = ResourceBundle.getBundle("config");
+    private static ResourceBundle config = ResourceBundle.getBundle("config");
 
     public static String get(String key) {
-        return res.getString(key);
+        return config.getString(key);
     }
 
     public static Charset charset() {
-        return Charset.forName(res.getString("charset"));
+        return Charset.forName(config.getString("charset"));
     }
 }
