@@ -12,7 +12,7 @@ import java.net.Socket;
  */
 public class TcpServer implements Runnable {
     // 日志
-    private Logger log = Logger.getLogger(this.getClass().getName());
+    private Logger log = Logger.getLogger(getClass().getName());
     private ServerSocket server;
     // 处理器
     private TcpHandler handler;
@@ -40,7 +40,8 @@ public class TcpServer implements Runnable {
         server = new ServerSocket();
         server.bind(address);
         new Thread(this).start();
-        this.log.info("启动服务器成功");
+        log.info("启动服务器成功");
+        System.out.println("启动服务器成功");
     }
 
     @Override
@@ -53,21 +54,29 @@ public class TcpServer implements Runnable {
                     socket = server.accept();
                     try {
                         TcpSocket tcpSocket = new TcpSocket(socket, handler);
-                        new Thread(tcpSocket).start();
+                        Thread t = new Thread(tcpSocket);
+                        t.setDaemon(true);
+                        t.start();
                         handler.accept(tcpSocket);
                     } catch (IOException e) {
-                        this.log.error("无法获取IO流", e);
+                        log.error("无法获取IO流", e);
                     }
                 } catch (IOException e) {
-                    this.log.warn("连接被迫关闭", e);
+                    log.warn("连接被迫关闭");
+                    log.debug(e);
                 }
             }
+            log.info("服务器停止运行");
+            System.out.println("服务器停止运行");
         } catch (NumberFormatException e) {
-            this.log.error("配置文件无效", e);
+            log.error("配置文件无效", e);
+            System.err.println("配置文件无效: " + e.getMessage());
         }
     }
 
     public void shutdown() throws IOException {
-        this.server.close();
+        log.info("即将关闭服务器");
+        System.out.println("即将关闭服务器");
+        server.close();
     }
 }

@@ -6,11 +6,12 @@ public class DataHead {
     static final int LEN = 13 + 10 + 10 + 4 + 256;
 
     public enum Order {
-        ASC(0x00),
-        BIN(0x01),
-        FILE_RECEIVE_READY(0x02),
-        FILE_RECEIVE_REFUSE(0x03),
-        FILE_RECEIVE_FINISHED(0x04),
+        HELLO_WORLD(0x00),
+        ASC(0x01),
+        BIN(0x02),
+        FILE_RECEIVE_READY(0x03),
+        FILE_RECEIVE_REFUSE(0x04),
+        FILE_RECEIVE_FINISHED(0x05),
         DEBUG(0x10),
         INFO(0x11),
         WARN(0x12),

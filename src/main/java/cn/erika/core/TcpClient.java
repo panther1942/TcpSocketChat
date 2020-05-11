@@ -30,7 +30,9 @@ public class TcpClient {
             // 连接成功再创建TcpSocket对象
             TcpSocket tcpSocket = new TcpSocket(socket, handler);
             // 开一个线程用来读取数据
-            new Thread(tcpSocket).start();
+            Thread t = new Thread(tcpSocket);
+            t.setDaemon(true);
+            t.start();
             // 然后交给处理器处理读和写操作
             handler.accept(tcpSocket);
         } catch (IOException e) {

@@ -20,11 +20,15 @@ public class ClientHandler extends DefaultHandler {
     @Override
     public void accept(TcpSocket socket) throws IOException {
         log.info("成功连接到服务器");
+        System.out.println("成功连接到服务器");
         this.socket = socket;
     }
 
     @Override
     public void close(TcpSocket socket) {
+        if (socket == null) {
+            return;
+        }
         String host = socket.getSocket().getInetAddress().getHostAddress();
         int port = socket.getSocket().getPort();
         log.warn("正在关闭连接 To: " + host + ":" + port);
@@ -34,12 +38,14 @@ public class ClientHandler extends DefaultHandler {
                 socket.close();
             }
         } catch (IOException e) {
-            log.warn("连接已经断开");
+            log.warn("连接中断");
+            System.out.println("连接中断");
         }
     }
 
     public void close() {
-        log.info("正在关闭客户端");
+        log.info("即将关闭客户端");
+        System.out.println("即将关闭客户端");
         close(socket);
     }
 
@@ -49,10 +55,16 @@ public class ClientHandler extends DefaultHandler {
     }
 
     @Override
-    protected void handler(TcpSocket socket, DataHead head, byte[] data) {
+    protected void handler(TcpSocket socket, DataHead head, byte[] data) throws IOException {
         switch (head.getOrder()) {
+            case HELLO_WORLD:
+                log.info("服务器要求加密通信");
+                System.out.println("服务器要求加密通信");
+                encrypt();
+                break;
             case FILE_RECEIVE_FINISHED:
                 log.info("文件传输完成: " + new String(data, charset));
+                System.out.println("文件传输完成: " + new String(data, charset));
                 if (getFlag(Action.CLOSE_AFTER_FINISHED)) {
                     close();
                 }
@@ -71,6 +83,7 @@ public class ClientHandler extends DefaultHandler {
 
     public void connect(InetSocketAddress target) throws IOException {
         log.info("尝试连接服务器 [" + target.getHostName() + ":" + target.getPort() + "]");
+        System.out.println("尝试连接服务器 [" + target.getHostName() + ":" + target.getPort() + "]");
         this.client.connect(target);
     }
 
@@ -80,6 +93,7 @@ public class ClientHandler extends DefaultHandler {
 
     public void encrypt() throws IOException {
         log.info("请求加密通信");
+        System.out.println("请求加密通信");
         write(socket, keyPair[0], DataHead.Order.ENCRYPT);
     }
 
@@ -101,5 +115,9 @@ public class ClientHandler extends DefaultHandler {
 
     public void find() throws IOException {
         write(socket, "", DataHead.Order.FIND);
+    }
+
+    public boolean isClosed() {
+        return socket.isClosed();
     }
 }

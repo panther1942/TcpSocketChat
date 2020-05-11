@@ -21,6 +21,8 @@ public class ServerHandler extends DefaultHandler {
     public void accept(TcpSocket socket) throws IOException {
         log.info("客户端接入: " +
                 socket.getSocket().getRemoteSocketAddress().toString());
+        System.out.println("客户端接入: " +
+                socket.getSocket().getRemoteSocketAddress().toString());
         String id = manager.add(socket, new Reader(charset, this));
         socket.setAttr(Extra.NICKNAME, id);
         socket.setAttr(Extra.HIDE, false);
@@ -33,12 +35,14 @@ public class ServerHandler extends DefaultHandler {
         try {
             if (!socket.isClosed()) {
                 log.info("正在关闭连接 User: " + id + " From: " + add);
+                System.out.println("正在关闭连接 User: " + id + " From: " + add);
                 socket.close();
             }
         } catch (IOException e) {
             log.warn("连接已经中断");
         } finally {
             log.warn("连接中断 User:" + id + " From: " + add);
+            System.out.println("连接中断 User:" + id + " From: " + add);
         }
 
         manager.del(socket);
@@ -133,8 +137,13 @@ public class ServerHandler extends DefaultHandler {
     }
 
     public void close() throws IOException {
-        server.shutdown();
+        for (String key : manager.get()) {
+            TcpSocket socket = manager.get(key);
+            write(socket, "See you later", DataHead.Order.BYE);
+            socket.close();
+        }
         manager.shutdown();
+        server.shutdown();
     }
 
     public void close(String key) throws IOException {
@@ -160,26 +169,31 @@ public class ServerHandler extends DefaultHandler {
     }
 
     public void display() {
-        log.info("当前接入数量: " + manager.size());
+        System.out.println("当前接入数量: " + manager.size());
         for (String link : manager.linksInfo()) {
-            log.info(link);
+            System.out.println(link);
         }
     }
 
     public void encrypt(String key) throws IOException {
         log.info("请求加密通信");
+        System.out.println("请求加密通信");
         TcpSocket socket = manager.get(key);
         if (socket == null) {
-            throw new IOException("连接不存在");
+            log.warn("连接不存在");
+            System.err.println("连接不存在");
+        } else {
+            write(socket, "Hello World", DataHead.Order.HELLO_WORLD);
         }
-        write(socket, "Hello World", DataHead.Order.ENCRYPT);
     }
 
     public void sendFile(String key, File file) throws IOException {
         TcpSocket socket = manager.get(key);
         if (socket == null) {
-            throw new IOException("连接不存在");
+            log.warn("连接不存在");
+            System.err.println("连接不存在");
+        } else {
+            sendFileHead(socket, file, file.getAbsolutePath());
         }
-        sendFileHead(socket, file, file.getAbsolutePath());
     }
 }

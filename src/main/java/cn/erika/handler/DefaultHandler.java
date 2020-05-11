@@ -142,6 +142,7 @@ public abstract class DefaultHandler extends CommonHandler {
                         log.debug("发送AES秘钥: [" + password + "]");
                         write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.AES));
                         socket.setAttr(Extra.ENCRYPT, true);
+                        System.out.println("通信已加密");
                     } catch (Exception e) {
                         log.error(e.getMessage());
                         write(socket, "客户端不支持这种加密方式: AES", DataHead.Order.ERROR);
@@ -157,6 +158,7 @@ public abstract class DefaultHandler extends CommonHandler {
                         socket.setAttr(Extra.PASSWORD, password);
                         socket.setAttr(Extra.ENCRYPT, true);
                         write(socket, "加密协商成功", DataHead.Order.INFO);
+                        System.out.println("通信已加密");
                     } catch (Exception e) {
                         log.error(e.getMessage());
                         write(socket, "服务器错误", DataHead.Order.ERROR);
@@ -171,10 +173,12 @@ public abstract class DefaultHandler extends CommonHandler {
                 case FILE_RECEIVE_READY:
                     filename = new String(data, charset).split("\\|")[0];
                     log.debug("准备发送文件: " + filename);
+                    System.out.println("准备发送文件: " + filename);
                     sendFile(socket, new File(filename));
                     break;
                 case FILE_RECEIVE_REFUSE:
                     log.warn("对方拒绝接收文件");
+                    System.out.println("对方拒绝接收文件");
                     break;
                 // 收到文件
                 case BIN:
@@ -183,6 +187,7 @@ public abstract class DefaultHandler extends CommonHandler {
                     length = Long.parseLong(msg[1]);
                     File file = new File(filename);
                     log.info("收到文件: " + file.getName());
+                    System.out.println("收到文件: " + file.getName());
                     try {
                         log.debug("切换处理器");
                         new FileHandler(socket, this, file.getName(), length);
@@ -200,6 +205,7 @@ public abstract class DefaultHandler extends CommonHandler {
                     log.debug(new String(data, charset));
                     break;
                 case INFO:
+                    log.info(new String(data, charset));
                     break;
                 case WARN:
                     log.warn(new String(data, charset));
@@ -221,8 +227,10 @@ public abstract class DefaultHandler extends CommonHandler {
     void sendFileHead(TcpSocket socket, File file, String filename) throws IOException {
         if (!file.exists()) {
             log.info("文件不存在: " + file.getAbsolutePath());
+            System.err.println("文件不存在: " + file.getAbsolutePath());
         } else if (!file.canRead()) {
             log.info("文件不可读: " + file.getAbsolutePath());
+            System.err.println("文件不可读: " + file.getAbsolutePath());
         } else {
             System.out.println("文件完整路径: " + file.getAbsolutePath());
             System.out.println("文件名: " + filename);
@@ -249,14 +257,18 @@ public abstract class DefaultHandler extends CommonHandler {
                 write(socket, tmp, head);
                 pos += len;
                 log.info("进度: " + df.format(pos / (double) file.length()));
+                System.out.println("进度: " + df.format(pos / (double) file.length()));
             }
             log.debug("发送完成");
+            System.out.println("发送完成");
             if (getFlag(Action.DELETE_FILE_AFTER_FINISHED)) {
                 log.info("删除原始文件: " + file.getAbsolutePath());
+                System.out.println("删除原始文件: " + file.getAbsolutePath());
                 if (file.delete()) {
                     log.info("原始文件已删除");
                 } else {
                     log.warn("无法删除原始文件");
+                    System.err.println("无法删除原始文件");
                 }
             }
         } catch (FileNotFoundException e) {

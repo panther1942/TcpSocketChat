@@ -52,6 +52,7 @@ public class TcpSocket implements Runnable {
             }
         } catch (IOException e) {
             log.warn("与服务器失去连接: " + socket.getRemoteSocketAddress().toString());
+            System.out.println("连接中断");
         } finally {
             try {
                 close();

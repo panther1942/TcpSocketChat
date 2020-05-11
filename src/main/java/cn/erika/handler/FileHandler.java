@@ -69,9 +69,16 @@ public class FileHandler extends CommonHandler {
 
         this.socket.setHandler(this);
 
+        File base = new File(baseDir);
+        if (!base.isDirectory() && !base.exists() && !base.mkdirs()) {
+            throw new IOException("无法创建下载目录");
+        }
+
         log.info("保存文件在: " + file.getAbsolutePath());
+        System.out.println("保存文件在: " + file.getAbsolutePath());
         if (file.exists()) {
             log.warn("文件已存在,即将覆盖: " + file.getAbsolutePath());
+            System.out.println("文件已存在,即将覆盖: " + file.getAbsolutePath());
             if (!file.delete()) {
                 throw new IOException("无法删除目标文件");
             }
@@ -112,6 +119,7 @@ public class FileHandler extends CommonHandler {
             }
             log.debug("解析完成 写入数据");
             log.info("当前进度: " + df.format((head.getPos() + data.length) / (double) fileLength));
+            System.out.println("当前进度: " + df.format((head.getPos() + data.length) / (double) fileLength));
             out.write(data, 0, data.length);
             filePos += data.length;
         }
@@ -120,6 +128,7 @@ public class FileHandler extends CommonHandler {
             handler.write(this.socket, file.getAbsolutePath(), DataHead.Order.FILE_RECEIVE_FINISHED);
             log.debug("交回控制权");
             log.info("传输完成");
+            System.out.println("传输完成");
         }
     }
 

@@ -1,6 +1,10 @@
 target/*
 logs/*
-
+src/test/*
+Downloads/*
+.idea/*
 *.iml
 *.log
 *.class
+
+DSA.java
