@@ -37,6 +37,8 @@ public class TcpServer implements Runnable {
     public void listen() throws IOException {
         log.info("尝试启动服务器 监听: [" +
                 address.getHostName() + ":" + address.getPort() + "]");
+        System.out.println("尝试启动服务器 监听: [" +
+                address.getHostName() + ":" + address.getPort() + "]");
         server = new ServerSocket();
         server.bind(address);
         new Thread(this).start();

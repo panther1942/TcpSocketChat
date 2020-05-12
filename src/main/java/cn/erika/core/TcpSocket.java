@@ -3,7 +3,9 @@ package cn.erika.core;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.HashMap;
 
 /**
@@ -20,6 +22,8 @@ public class TcpSocket implements Runnable {
     private InputStream in;
     private OutputStream out;
 
+    private SocketAddress localAddress;
+
     /**
      * 默认构造方法 需要一个Socket对象和一个处理器
      *
@@ -28,15 +32,52 @@ public class TcpSocket implements Runnable {
      * @throws IOException 如果配置无效或者获取IO流失败
      */
     TcpSocket(Socket socket, TcpHandler handler) throws IOException {
+        this.handler = handler;
         this.attr = new HashMap();
         this.socket = socket;
+        this.localAddress = this.socket.getRemoteSocketAddress();
+        init();
+    }
+
+    TcpSocket(InetSocketAddress address, TcpHandler handler) throws IOException {
         this.handler = handler;
+        this.socket = new Socket();
+        this.socket.setReuseAddress(true);
+        this.socket.connect(address);
+        this.localAddress = this.socket.getRemoteSocketAddress();
+        init();
+    }
+
+    private void init() throws IOException {
         // 初始化Socket属性
         handler.init(this);
         in = socket.getInputStream();
         out = socket.getOutputStream();
     }
 
+    public void connect(InetSocketAddress address, TcpHandler handler) throws IOException {
+        this.socket.close();
+        this.handler = handler;
+        if (!socket.isBound()) {
+            this.socket.bind(localAddress);
+        }
+        for (int i = 0; i < 10; i++) {
+            try {
+                this.socket.connect(address);
+                log.info("尝试第 " + (i + 1) + " 次连接");
+                if (this.socket.isConnected()) {
+                    log.info("连接成功");
+                    break;
+                }
+            } catch (IOException e) {
+                log.warn("第 " + (i + 1) + " 次连接失败");
+            }
+        }
+        if (!socket.isConnected()) {
+            throw new IOException("连接失败");
+        }
+        init();
+    }
 
     @Override
     public void run() {

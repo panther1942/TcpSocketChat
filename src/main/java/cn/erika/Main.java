@@ -12,7 +12,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Main {
     // 日志记录
@@ -64,7 +67,6 @@ public class Main {
                     command = line;
                 }
                 try {
-                    String attr = null;
                     switch (command) {
                         case "s":
                             server();
@@ -94,36 +96,24 @@ public class Main {
             // 命令解析部分
             String line;
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line)) {
-                String command = null;
+                String[] command = getParam(line);
                 try {
-                    command = line.split("#")[0];
-                } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
-                    command = line;
-                }
-                String dest;
-                String msg;
-                try {
-                    switch (command) {
+                    switch (command[0]) {
                         case "show":
                             server.display();
                             break;
                         case "send":
-                            dest = line.substring(command.length() + 1).split(":")[0];
-                            msg = line.substring(command.length() + dest.length() + 2);
-                            server.send(dest, msg);
+                            server.send(command[1], command[2]);
                             break;
                         case "file":
-                            dest = line.substring(command.length() + 1).split(":")[0];
-                            String filename = line.substring(command.length() + dest.length() + 2);
-                            server.sendFile(dest, new File(filename));
+                            server.sendFile(command[1], new File(command[2]));
                             break;
                         case "kill":
-                            String client = line.substring(5);
+                            String client = command[1];
                             server.close(client);
                             break;
                         case "encrypt":
-                            dest = line.split("#")[1];
-                            server.encrypt(dest);
+                            server.encrypt(command[1]);
                             break;
                         default:
                             log.warn("命令无效: " + line);
@@ -157,48 +147,52 @@ public class Main {
             //命令解析部分
             String line;
             while ((line = input.read()) != null && !"EXIT".equalsIgnoreCase(line) && !client.isClosed()) {
-                String command = null;
+                String[] command = getParam(line);
                 try {
-                    command = line.split("#")[0];
-                } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
-                    command = line;
-                }
-                String msg = null;
-                try {
-                    switch (command) {
+                    switch (command[0]) {
                         case "send":
-                            msg = line.substring(command.length() + 1);
-                            client.send(msg);
+                            StringBuffer buf = new StringBuffer();
+                            for (int i = 2; i < command.length; i++) {
+                                buf.append(command[i]);
+                                buf.append(" ");
+                            }
+                            if (command[1].equals("server")) {
+                                client.send(buf.toString());
+                            } else {
+                                client.send(command[1], buf.toString());
+                            }
+
                             break;
                         case "encrypt":
                             client.encrypt();
                             break;
                         case "file":
-                            msg = line.substring(command.length() + 1);
-                            if (msg.split("#").length > 1) {
-                                String file = msg.substring(0, msg.lastIndexOf("#"));
-                                String filename = msg.substring(msg.lastIndexOf("#") + 1, msg.length());
+                            if (command.length > 2) {
+                                String file = command[1];
+                                String filename = command[2];
                                 client.sendFile(new File(file), filename);
                             } else {
-                                client.sendFile(new File(msg));
+                                client.sendFile(new File(command[1]));
                             }
                             break;
-                        case "reg":
-                            msg = line.substring(command.length() + 1);
-                            client.registry(msg);
-                            break;
-                        case "talk":
-                            msg = line.substring(command.length() + 1);
-                            client.talk(msg);
+                        case "name":
+                            client.name(command[1]);
                             break;
                         case "find":
-                            client.find();
+                            if (command.length == 1) {
+                                client.find();
+                            } else {
+                                client.find(command[1]);
+                            }
+                            break;
+                        case "direct":
+                            client.direct(command[1], command[2]);
                             break;
                         default:
                             log.warn("命令无效: " + line);
                             clientTip();
                     }
-                } catch (StringIndexOutOfBoundsException e) {
+                } catch (ArrayIndexOutOfBoundsException | StringIndexOutOfBoundsException e) {
                     log.warn("命令无效: " + line);
                     clientTip();
                 }
@@ -217,14 +211,14 @@ public class Main {
     private static void clientTip() {
         System.out.println("\n" +
                 "send 发送消息给服务器\n" +
-                "talk 发送消息给指定的连接\n" +
-                "  例:talk#Hello World\n" +
+                "     发送消息给指定的连接\n" +
+                "  例:talk Hello World\n" +
+                "     talk id0 Hello World" +
                 "encrypt 请求加密通信\n" +
-                "reg 注册昵称" +
+                "name 注册昵称" +
                 "find 显示服务器接入的连接\n" +
                 "file 发送文件给服务器 (文件名不要出现#)\n" +
                 "  例:file#/var/www/html/index.html\n" +
-                "kill 强制指定的连接下线\n" +
                 "exit 退出\n");
     }
 
@@ -238,5 +232,16 @@ public class Main {
                 "  例:file#id0:/var/www/html/index.html\n" +
                 "kill 强制指定的连接下线\n" +
                 "exit 退出\n");
+    }
+
+    private static String[] getParam(String line) {
+        List<String> list = new ArrayList<>();
+        String regex = "(\"[^\".]+\"|\\S+)";
+        Pattern p = Pattern.compile(regex);
+        Matcher m = p.matcher(line);
+        while (m.find()) {
+            list.add(m.group(1).replaceAll("\"", ""));
+        }
+        return list.toArray(new String[list.size()]);
     }
 }

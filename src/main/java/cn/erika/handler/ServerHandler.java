@@ -56,8 +56,9 @@ public class ServerHandler extends DefaultHandler {
     @Override
     protected void handler(TcpSocket socket, DataHead head, byte[] data) throws IOException {
         String nickName;
+        TcpSocket dest = null;
         switch (head.getOrder()) {
-            case REG:
+            case NAME:
                 // 注册
                 nickName = new String(data, charset);
                 if ("".equals(nickName)) {
@@ -97,8 +98,11 @@ public class ServerHandler extends DefaultHandler {
                 String tmp = new String(data, charset);
                 String nickname = tmp.split(":")[0];
                 String message = tmp.substring(nickname.length() + 1);
-                TcpSocket dest = manager.getByNickname(nickname);
+                dest = manager.getByNickname(nickname);
                 if (dest != null) {
+                    log.info("服务器转发消息: \nsrc[" + socket.getSocket().getRemoteSocketAddress() + "]\n" +
+                            "dst[" + dest.getSocket().getRemoteSocketAddress() + "]\n" +
+                            "msg[" + message + "]");
                     String from = socket.getAttr(Extra.NICKNAME);
                     write(dest, from + ":" + message);
                 } else {
@@ -114,6 +118,18 @@ public class ServerHandler extends DefaultHandler {
                 // 允许查找
                 socket.setAttr(Extra.HIDE, false);
                 write(socket, "已允许查找");
+                break;
+            case DIRECT:
+                String msg = new String(data, charset);
+                dest = manager.get(msg.split("#")[0]);
+                int port = Integer.parseInt(msg.split("#")[1]);
+                if (dest != null) {
+                    String src = manager.get(socket);
+                    String srcRemote = src + "#" + socket.getSocket().getRemoteSocketAddress().toString().substring(1).split(":")[0] + ":" + port;
+                    write(dest, srcRemote, DataHead.Order.REMOTE_ADDRESS);
+                } else {
+                    write(socket, "未找到连接: " + msg);
+                }
                 break;
             default:
                 log.warn("未知消息头: " + head.show() + "\n内容: " + new String(data, charset));

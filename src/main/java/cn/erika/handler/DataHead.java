@@ -19,11 +19,13 @@ public class DataHead {
         ENCRYPT(0x14),
         RSA(0x21),
         AES(0x22),
-        REG(0x23),
+        NAME(0x23),
         FIND(0x24),
         TALK(0x25),
         HIDE(0x26),
         SEEK(0x27),
+        DIRECT(0x29),
+        REMOTE_ADDRESS(0x28),
         BYE(0xFF);
 
         public int value;
