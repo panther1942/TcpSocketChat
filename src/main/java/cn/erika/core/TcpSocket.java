@@ -1,5 +1,6 @@
 package cn.erika.core;
 
+import cn.erika.handler.DataHead;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -23,6 +24,17 @@ public class TcpSocket implements Runnable {
     private OutputStream out;
 
     private SocketAddress localAddress;
+
+    // 核心属性0x00-0xFF
+    public enum Standard implements Attribute {
+        CACHE_SIZE(0x0);
+
+        int value;
+
+        Standard(int value) {
+            this.value = value;
+        }
+    }
 
     /**
      * 默认构造方法 需要一个Socket对象和一个处理器
@@ -82,7 +94,7 @@ public class TcpSocket implements Runnable {
     @Override
     public void run() {
         // 缓冲区 如果初始化中未设置缓冲区大小将使用默认值4096 即4k
-        int cacheSize = getAttr(Attribute.Standard.CACHE_SIZE);
+        int cacheSize = getAttr(Standard.CACHE_SIZE);
         byte[] cache = new byte[cacheSize];
         // 读取到的字节数 如果为-1说明连接中断
         int len;
@@ -113,13 +125,17 @@ public class TcpSocket implements Runnable {
     public void write(byte[] data, int len) throws IOException {
         int pos = 0;
         // 这里用pos标记发送数据的长度 每次发送缓冲区大小个字节 直到pos等于数据长度len
-        int cacheSize = getAttr(Attribute.Standard.CACHE_SIZE);
+        int cacheSize = getAttr(Standard.CACHE_SIZE);
         while (len - pos > cacheSize) {
             out.write(data, pos, cacheSize);
             pos += cacheSize;
         }
         out.write(data, pos, len - pos);
         out.flush();
+    }
+
+    public void deal(DataHead head, byte[] data) throws IOException {
+        handler.deal(this, head, data);
     }
 
     public void close() throws IOException {

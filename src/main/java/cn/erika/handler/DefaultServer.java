@@ -1,17 +1,22 @@
 package cn.erika.handler;
 
+import cn.erika.core.Reader;
 import cn.erika.core.TcpServer;
 import cn.erika.core.TcpSocket;
+import cn.erika.plugins.security.RSA;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Set;
+import java.util.*;
 
-public class ServerHandler extends DefaultHandler {
+public class DefaultServer extends DefaultHandler {
     private TcpServer server;
+    // 连接管理器
     private SocketManager manager = new SocketManager();
 
+    // 对外提供的功能
     public enum Function {
         SEND(0x00),
         FILE(0x01),
@@ -37,14 +42,20 @@ public class ServerHandler extends DefaultHandler {
                 socket.getSocket().getRemoteSocketAddress().toString());
         System.out.println("客户端接入: " +
                 socket.getSocket().getRemoteSocketAddress().toString());
-        String id = manager.add(socket, new Reader(charset, this));
+        String id = manager.add(socket, new DefaultReader(charset, socket, this));
         socket.setAttr(Extra.NICKNAME, id);
         socket.setAttr(Extra.HIDE, false);
     }
 
+    /**
+     * @param socket 对应的Socket对象
+     * @param data   读取到的字节 注意 传输的数组的长度为缓冲区的大小 而不是读取到的字节数
+     * @param len    读取到的字节数
+     * @throws IOException
+     */
     @Override
-    public void read(TcpSocket socket, byte[] data, int len) throws IOException {
-        manager.getCache(socket).read(socket, data, len);
+    public synchronized void read(TcpSocket socket, byte[] data, int len) throws IOException {
+        manager.getReader(socket).process(data, len);
     }
 
     @Override
@@ -52,6 +63,29 @@ public class ServerHandler extends DefaultHandler {
         String nickName;
         TcpSocket dest = null;
         switch (head.getOrder()) {
+            // 收到加密请求
+            case ENCRYPT:
+                log.info("对方请求启用加密: " + socket.getSocket().getRemoteSocketAddress());
+                socket.setAttr(Extra.PUBLIC_KEY, data);
+                log.debug("发送自身的公钥");
+                write(socket, keyPair[0], new DataHead(DataHead.Order.ENCRYPT_RSA));
+                break;
+            // 收到对方发送的AES秘钥
+            case ENCRYPT_AES:
+                try {
+                    String password = new String(RSA.decryptByPrivateKey(data, keyPair[1]), charset);
+                    log.info("加密协商完成");
+                    log.debug("收到AES密钥");
+                    socket.setAttr(Extra.PASSWORD, password);
+                    socket.setAttr(Extra.ENCRYPT, true);
+                    write(socket, "加密协商成功", DataHead.Order.ENCRYPT_CONFIRM);
+                    System.out.println("通信已加密");
+                } catch (Exception e) {
+                    log.error(e.getMessage());
+                    write(socket, "服务器错误", DataHead.Order.LOG_ERROR);
+                    e.printStackTrace();
+                }
+                break;
             case NICKNAME:
                 // 注册
                 nickName = new String(data, charset);
@@ -88,7 +122,7 @@ public class ServerHandler extends DefaultHandler {
                 write(socket, buffer.toString());
                 break;
             case FORWARD:
-                // 聊天
+                // 使用服务器中继向某用户发送文本信息
                 String tmp = new String(data, charset);
                 String nickname = tmp.split(":")[0];
                 String message = tmp.substring(nickname.length() + 1);
@@ -247,5 +281,101 @@ public class ServerHandler extends DefaultHandler {
                 "  例:encrypt id0" +
                 "kill 强制指定的连接下线\n" +
                 "exit 退出\n");
+    }
+
+    private class SocketManager {
+        private Logger log = Logger.getLogger(this.getClass().getName());
+
+        private HashMap<String, TcpSocket> links = new HashMap<>();
+        private HashMap<TcpSocket, Reader> cachePool = new HashMap<>();
+        private int order = 0;
+
+        private Timer timer = new Timer();
+
+        SocketManager() {
+            TimerTask task = new TimerTask() {
+                @Override
+                public void run() {
+                    log.debug("开始运行定时清理程序");
+                    int count;
+                    synchronized (this) {
+                        Iterator<Map.Entry<String, TcpSocket>> it = links.entrySet().iterator();
+                        count = 0;
+                        while (it.hasNext()) {
+                            Map.Entry<String, TcpSocket> en = it.next();
+                            TcpSocket socket = en.getValue();
+                            if (socket.isClosed()) {
+                                it.remove();
+                                count++;
+                            }
+                        }
+                    }
+                    log.info("清除无效连接[" + count + "]");
+                }
+            };
+            timer.schedule(task, 15000, 15000);
+        }
+
+        void shutdown() throws IOException {
+            timer.cancel();
+        }
+
+        synchronized String add(TcpSocket socket, Reader reader) throws IOException {
+            String id = "id" + this.order++;
+            links.put(id, socket);
+            cachePool.put(socket, reader);
+            return id;
+        }
+
+        /**
+         * 用于关闭客户端连接
+         *
+         * @param socket 客户端连接对应的TcpSocket对象 应该从Socket管理程序取出
+         */
+        synchronized void del(TcpSocket socket) {
+            String target = get(socket);
+            if (target != null) {
+                links.remove(target);
+            }
+        }
+
+        TcpSocket get(String key) {
+            return this.links.get(key);
+        }
+
+        TcpSocket getByNickname(String nickname) {
+            for (String key : links.keySet()) {
+                String _nickname = links.get(key).getAttr(CommonHandler.Extra.NICKNAME);
+                if (_nickname.equals(nickname)) {
+                    return this.links.get(key);
+                }
+            }
+            return null;
+        }
+
+        Set<String> get() {
+            return links.keySet();
+        }
+
+        String get(TcpSocket socket) {
+            for (String key : links.keySet()) {
+                if (links.get(key) == socket) {
+                    return key;
+                }
+            }
+            return null;
+        }
+
+        Reader getReader(TcpSocket socket) {
+            return cachePool.get(socket);
+        }
+
+        int size() {
+            return links.size();
+        }
+
+        Set<String> linksInfo() {
+            return links.keySet();
+        }
     }
 }

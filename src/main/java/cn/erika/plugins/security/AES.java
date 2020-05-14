@@ -17,12 +17,13 @@ public class AES {
     private static Random random = new Random();
 
     public static String randomPassword(int len) {
-        StringBuilder buffer = new StringBuilder();
+        /*StringBuilder buffer = new StringBuilder();
         for (int i = 0; i < len; i++) {
             int idx = random.nextInt(95) + 33;
             buffer.append(String.valueOf((char) idx));
         }
-        return buffer.toString();
+        return buffer.toString();*/
+        return "1234567890";
     }
 
     /**

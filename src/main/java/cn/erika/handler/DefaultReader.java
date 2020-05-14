@@ -1,5 +1,6 @@
 package cn.erika.handler;
 
+import cn.erika.core.Reader;
 import cn.erika.core.TcpHandler;
 import cn.erika.core.TcpSocket;
 import org.apache.log4j.Logger;
@@ -8,47 +9,31 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Date;
 
-
-public class Reader {
+// 根据自定协议实现的一个处理数据的类
+public class DefaultReader implements Reader {
     private Logger log = Logger.getLogger(this.getClass().getName());
+    // 持有的TcpSocket
+    private TcpSocket socket;
     private Charset charset;
     private TcpHandler handler;
     private DataHead head;
     // 缓冲区
     private byte[] cache = new byte[0];
-    // 缓冲区临时部分
     private byte[] cacheTmp = new byte[0];
     // 缓冲区写入偏移量
     private int pos = 0;
 
-    Reader(Charset charset, TcpHandler handler) {
+    DefaultReader(Charset charset, TcpSocket socket, TcpHandler handler) {
         this.charset = charset;
+        this.socket = socket;
         this.handler = handler;
     }
 
-    public void read(TcpSocket socket, byte[] data, int len) throws IOException {
+    @Override
+    public void process(byte[] data, int len) throws IOException {
         // 如果缓冲区长度为0 则需要检查缓冲区的临时部分是否也为0
         if (cache.length == 0) {
-            // 如果都为0 说明数据头就在开头的位置 不需要额外的处理
-            if (cacheTmp.length == 0) {
-                getHead(data, len);
-            } else {
-                // 这里貌似没用...
-                log.info("---------------------------");
-                // 如果缓冲区的临时部分不为0 说明临时部分包含这次数据的一部分
-                // 需要扩容缓冲区临时部分,然后将数据复制进来
-                byte[] tmp = new byte[cacheTmp.length + len];
-                // 先复制缓冲区临时区域的 他们在前面
-                System.arraycopy(cacheTmp, 0, tmp, 0, cacheTmp.length);
-                // 然后复制本次传来的数据
-                System.arraycopy(data, 0, tmp, cacheTmp.length, len);
-                // 修正偏移量
-                pos = cacheTmp.length + len;
-                // 尝试获取头部和数据
-                getHead(tmp, pos);
-                // 清除缓冲区临时部分的数据
-                cacheTmp = new byte[0];
-            }
+            getHead(data, len);
         } else {
             // 如果缓冲区写入偏移量加上本次传来的数据大于缓冲区长度
             // 说明这次传来的数据包含两轮数据的一部分
@@ -59,7 +44,7 @@ public class Reader {
                 System.arraycopy(data, 0, cache, pos, available);
                 pos += available;
                 // 将缓冲区交给处理器处理
-                handler.deal(socket, head, cache);
+                socket.deal(head, cache);
                 // 清空缓冲区 写入偏移量归零 数据头置空
                 cache = new byte[0];
                 pos = 0;
@@ -72,7 +57,6 @@ public class Reader {
                 // 解析完之后会将临时区的数据部分放进缓冲区
                 // 最后清空缓冲区的临时部分 等待下一次接收数据
                 if (len - available > DataHead.LEN) {
-                    // 这里用了次递归(不得劲)
                     getHead(cacheTmp, len - available);
                     cacheTmp = new byte[0];
                 }
@@ -86,7 +70,7 @@ public class Reader {
         // 或者请求头中数据长度就是0 说明这一轮的数据都拿到了 开始处理并清空缓冲区,偏移量归零,数据头置空
         if (pos == cache.length && pos > 0 || head.getLen() == 0) {
             log.debug("数据完整 开始处理");
-            handler.deal(socket, head, cache);
+            socket.deal(head, cache);
             cache = new byte[0];
             pos = 0;
             head = null;

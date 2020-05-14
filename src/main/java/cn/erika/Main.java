@@ -1,13 +1,12 @@
 package cn.erika;
 
-import cn.erika.handler.ClientHandler;
-import cn.erika.handler.ServerHandler;
+import cn.erika.handler.DefaultClient;
+import cn.erika.handler.DefaultServer;
 import cn.erika.plugins.io.ConfigReader;
 import cn.erika.plugins.io.GeneralInput;
 import cn.erika.plugins.io.KeyboardReader;
 import org.apache.log4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
@@ -87,7 +86,7 @@ public class Main {
 
     private static void server() throws IOException {
         // 新建对象
-        ServerHandler server = new ServerHandler();
+        DefaultServer server = new DefaultServer();
         server.setCacheSize(Integer.parseInt(ConfigReader.get("cache_size")));
         server.setCharset(ConfigReader.charset());
         // 尝试启动
@@ -100,19 +99,19 @@ public class Main {
                 try {
                     switch (command[0]) {
                         case "send":
-                            server.service(ServerHandler.Function.SEND, command);
+                            server.service(DefaultServer.Function.SEND, command);
                             break;
                         case "file":
-                            server.service(ServerHandler.Function.FILE, command);
+                            server.service(DefaultServer.Function.FILE, command);
                             break;
                         case "encrypt":
-                            server.service(ServerHandler.Function.ENCRYPT, command);
+                            server.service(DefaultServer.Function.ENCRYPT, command);
                             break;
                         case "show":
-                            server.service(ServerHandler.Function.SHOW);
+                            server.service(DefaultServer.Function.SHOW);
                             break;
                         case "kill":
-                            server.service(ServerHandler.Function.KILL, command);
+                            server.service(DefaultServer.Function.KILL, command);
                             break;
                         default:
                             log.warn("命令无效: " + line);
@@ -136,9 +135,9 @@ public class Main {
 
     private static void client() {
         // 新建对象
-        ClientHandler client = null;
+        DefaultClient client = null;
         try {
-            client = new ClientHandler();
+            client = new DefaultClient();
             client.setCacheSize(Integer.parseInt(ConfigReader.get("cache_size")));
             client.setCharset(ConfigReader.charset());
             // 尝试启动
@@ -150,22 +149,22 @@ public class Main {
                 try {
                     switch (command[0]) {
                         case "send":
-                            client.service(ClientHandler.Function.SEND, command);
+                            client.service(DefaultClient.Function.SEND, command);
                             break;
                         case "file":
-                            client.service(ClientHandler.Function.FILE, command);
+                            client.service(DefaultClient.Function.FILE, command);
                             break;
                         case "encrypt":
-                            client.service(ClientHandler.Function.ENCRYPT);
+                            client.service(DefaultClient.Function.ENCRYPT);
                             break;
                         case "find":
-                            client.service(ClientHandler.Function.FIND, command);
+                            client.service(DefaultClient.Function.FIND, command);
                             break;
                         case "name":
-                            client.service(ClientHandler.Function.NAME, command);
+                            client.service(DefaultClient.Function.NAME, command);
                             break;
                         case "udp":
-                            client.service(ClientHandler.Function.UDP, command);
+                            client.service(DefaultClient.Function.UDP, command);
                             break;
                         default:
                             log.warn("命令无效: " + line);

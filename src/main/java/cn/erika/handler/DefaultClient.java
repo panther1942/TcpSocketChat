@@ -1,22 +1,33 @@
 package cn.erika.handler;
 
+import cn.erika.core.Reader;
 import cn.erika.core.TcpClient;
 import cn.erika.core.TcpSocket;
+import cn.erika.plugins.security.AES;
+import cn.erika.plugins.security.RSA;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class ClientHandler extends DefaultHandler {
+public class DefaultClient extends DefaultHandler {
+    // TcpClient对象用来管理TcpSocket对象
     private TcpClient client;
+    // TcpSocket对象持有一个Socket对象
     private TcpSocket socket;
+    // Reader用来解析数据
     private Reader reader;
-
+    // UDP的连接对象
     private DatagramSocket udpSocket;
+    // UDP的监听端口
     private String udpPort;
+    // 存储聊天用户的UDP地址
     private HashMap<String, InetSocketAddress> addMap;
 
+    // 对外提供的功能
     public enum Function {
         SEND(0x00),
         FILE(0x01),
@@ -32,17 +43,27 @@ public class ClientHandler extends DefaultHandler {
         }
     }
 
-    public ClientHandler() throws IOException {
-        reader = new Reader(charset, this);
+    /**
+     * 唯一构建客户端处理器的方法,执行一些初始化操作
+     *
+     * @throws IOException 如果在构建对象的过程中发生异常,则终止初始化
+     */
+    public DefaultClient() throws IOException {
         client = new TcpClient(this);
         udpSocket = new DatagramSocket();
         addMap = new HashMap<>();
     }
 
-    public void connect(InetSocketAddress target) throws IOException {
-        log.info("尝试连接服务器 [" + target.getHostName() + ":" + target.getPort() + "]");
-        System.out.println("尝试连接服务器 [" + target.getHostName() + ":" + target.getPort() + "]");
-        this.client.connect(target);
+    /**
+     * 连接服务器
+     *
+     * @param address 服务器的地址
+     * @throws IOException 如果无法连接服务器则抛出该异常
+     */
+    public void connect(InetSocketAddress address) throws IOException {
+        log.info("尝试连接服务器 [" + address.getHostName() + ":" + address.getPort() + "]");
+        System.out.println("尝试连接服务器 [" + address.getHostName() + ":" + address.getPort() + "]");
+        this.client.connect(address);
     }
 
     @Override
@@ -50,6 +71,8 @@ public class ClientHandler extends DefaultHandler {
         log.info("成功连接到服务器");
         System.out.println("成功连接到服务器");
         this.socket = socket;
+        reader = new DefaultReader(charset, socket, this);
+        // UDP的端口号无法通过getPort获取
         this.udpPort = udpSocket.getLocalSocketAddress().toString().split(":")[1];
         // 顺手开个UDP玩玩
         Thread udpReceiver = new Thread(() -> {
@@ -70,20 +93,46 @@ public class ClientHandler extends DefaultHandler {
         udpReceiver.start();
     }
 
+    /**
+     * 这里是数据的解析工作,交给Reader对象进行数据解析
+     *
+     * @param socket 对应的Socket对象
+     * @param data   读取到的字节 注意 传输的数组的长度为缓冲区的大小 而不是读取到的字节数
+     * @param len    读取到的字节数
+     * @throws IOException 如果数据解析过程中出现非法数据或者连接异常,则抛出该异常
+     */
     @Override
     public void read(TcpSocket socket, byte[] data, int len) throws IOException {
-        reader.read(socket, data, len);
+        reader.process(data, len);
     }
 
     @Override
     protected void handler(TcpSocket socket, DataHead head, byte[] data) throws IOException {
         String[] tmp;
         String message = new String(data, charset);
+
         switch (head.getOrder()) {
             case HELLO_WORLD:
                 log.info("服务器要求加密通信");
                 System.out.println("服务器要求加密通信");
                 write(socket, keyPair[0], DataHead.Order.ENCRYPT);
+                break;
+            // 收到对方公钥
+            case ENCRYPT_RSA:
+                log.debug("收到对方公钥");
+                socket.setAttr(Extra.PUBLIC_KEY, data);
+                String password = AES.randomPassword(20);
+                socket.setAttr(Extra.PASSWORD, password);
+                try {
+                    log.debug("发送AES秘钥: [" + password + "]");
+                    write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.ENCRYPT_AES));
+                    socket.setAttr(Extra.ENCRYPT, true);
+                    System.out.println("通信已加密");
+                } catch (Exception e) {
+                    log.error(e.getMessage());
+                    write(socket, "客户端不支持这种加密方式: AES", DataHead.Order.LOG_ERROR);
+                    e.printStackTrace();
+                }
                 break;
             case FILE_RECEIVE_FINISHED:
                 log.info("文件传输完成: " + message);
@@ -96,7 +145,7 @@ public class ClientHandler extends DefaultHandler {
                 System.out.println(message);
                 break;
             case NICKNAME_FAILED:
-                System.out.println("昵称注册失败: "+message);
+                System.out.println("昵称注册失败: " + message);
                 break;
             case UDP_NOT_FOUNT:
                 log.info("未找到用户: " + message);

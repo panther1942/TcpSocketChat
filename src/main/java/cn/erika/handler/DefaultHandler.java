@@ -1,7 +1,5 @@
 package cn.erika.handler;
 
-import cn.erika.core.Attribute;
-
 import cn.erika.core.TcpSocket;
 import cn.erika.plugins.security.AES;
 import cn.erika.plugins.security.RSA;
@@ -17,7 +15,6 @@ import java.util.HashMap;
 
 public abstract class DefaultHandler extends CommonHandler {
     private static DecimalFormat df = new DecimalFormat("#.00%");
-
     // RSA密钥对
     byte[][] keyPair;
     // 缓冲区大小 默认值4K
@@ -39,7 +36,7 @@ public abstract class DefaultHandler extends CommonHandler {
     // 建立Socket连接的时候需要进行初始化
     @Override
     public void init(TcpSocket socket) throws IOException {
-        socket.setAttr(Attribute.Standard.CACHE_SIZE, cacheSize);
+        socket.setAttr(TcpSocket.Standard.CACHE_SIZE, cacheSize);
         socket.setAttr(Extra.ENCRYPT, false);
         try {
             // 每次启动都会生成不同的RSA秘钥对
@@ -67,7 +64,7 @@ public abstract class DefaultHandler extends CommonHandler {
         write(socket, data, head);
     }
 
-    private void write(TcpSocket socket, byte[] data, DataHead head) throws IOException {
+    void write(TcpSocket socket, byte[] data, DataHead head) throws IOException {
         boolean encrypt = socket.getAttr(Extra.ENCRYPT);
         String password = socket.getAttr(Extra.PASSWORD);
 
@@ -112,61 +109,19 @@ public abstract class DefaultHandler extends CommonHandler {
         } else {
             log.warn("无签名信息");
         }
-
-        String[] msg;
+        String message = new String(data, charset);
         String filename;
-        long length;
 
         DataHead.Order order = head.getOrder();
         try {
             switch (order) {
-                // 收到加密请求
-                case ENCRYPT:
-                    log.info("对方请求启用加密: " + socket.getSocket().getRemoteSocketAddress());
-                    socket.setAttr(Extra.PUBLIC_KEY, data);
-                    log.debug("发送自身的公钥");
-                    write(socket, keyPair[0], new DataHead(DataHead.Order.ENCRYPT_RSA));
-                    break;
-                // 收到对方公钥
-                case ENCRYPT_RSA:
-                    log.debug("收到对方公钥");
-                    socket.setAttr(Extra.PUBLIC_KEY, data);
-                    password = AES.randomPassword(20);
-                    socket.setAttr(Extra.PASSWORD, password);
-                    try {
-                        log.debug("发送AES秘钥: [" + password + "]");
-                        write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.ENCRYPT_AES));
-                        socket.setAttr(Extra.ENCRYPT, true);
-                        System.out.println("通信已加密");
-                    } catch (Exception e) {
-                        log.error(e.getMessage());
-                        write(socket, "客户端不支持这种加密方式: AES", DataHead.Order.LOG_ERROR);
-                        e.printStackTrace();
-                    }
-                    break;
-                // 收到对方发送的AES秘钥
-                case ENCRYPT_AES:
-                    try {
-                        password = new String(RSA.decryptByPrivateKey(data, keyPair[1]), charset);
-                        log.info("加密协商完成");
-                        log.debug("收到AES密钥");
-                        socket.setAttr(Extra.PASSWORD, password);
-                        socket.setAttr(Extra.ENCRYPT, true);
-                        write(socket, "加密协商成功", DataHead.Order.LOG_INFO);
-                        System.out.println("通信已加密");
-                    } catch (Exception e) {
-                        log.error(e.getMessage());
-                        write(socket, "服务器错误", DataHead.Order.LOG_ERROR);
-                        e.printStackTrace();
-                    }
-                    break;
                 // 收到断开信息
                 case BYE:
-                    log.info(new String(data, charset));
+                    log.info(message);
                     close(socket);
                     break;
                 case FILE_RECEIVE_READY:
-                    filename = new String(data, charset).split("\\|")[0];
+                    filename = message.split("\\|")[0];
                     log.debug("准备发送文件: " + filename);
                     System.out.println("准备发送文件: " + filename);
                     sendFile(socket, new File(filename));
@@ -175,17 +130,22 @@ public abstract class DefaultHandler extends CommonHandler {
                     log.warn("对方拒绝接收文件");
                     System.out.println("对方拒绝接收文件");
                     break;
+                case ASC:
+                case ENCRYPT_CONFIRM:
+                    display(socket, message);
+                    write(socket, "", DataHead.Order.ENCRYPT_CONFIRM);
+                    break;
                 // 收到文件
                 case BIN:
-                    msg = new String(data, charset).split("\\|");
-                    filename = msg[2];
-                    length = Long.parseLong(msg[1]);
+                    String[] info = message.split("\\|");
+                    filename = info[2];
+                    long length = Long.parseLong(info[1]);
                     File file = new File(filename);
                     log.info("收到文件: " + file.getName());
                     System.out.println("收到文件: " + file.getName());
                     try {
                         log.debug("切换处理器");
-                        new FileHandler(socket, this, file.getName(), length);
+                        new FileReceiver(socket, this, file.getName(), length);
                         head.setOrder(DataHead.Order.FILE_RECEIVE_READY);
                     } catch (IOException e) {
                         log.error("发生读写错误: " + e.getMessage());
@@ -197,19 +157,16 @@ public abstract class DefaultHandler extends CommonHandler {
                     break;
                 // 收到文字及其他无需处理的消息 直接打印出来
                 case LOG_DEBUG:
-                    log.debug(new String(data, charset));
+                    log.debug(message);
                     break;
                 case LOG_INFO:
-                    log.info(new String(data, charset));
+                    log.info(message);
                     break;
                 case LOG_WARN:
-                    log.warn(new String(data, charset));
+                    log.warn(message);
                     break;
                 case LOG_ERROR:
-                    log.error(new String(data, charset));
-                    break;
-                case ASC:
-                    display(socket, new String(data, charset));
+                    log.error(message);
                     break;
                 default:
                     handler(socket, head, data);
