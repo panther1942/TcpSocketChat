@@ -5,10 +5,13 @@ import cn.erika.plugins.security.RSA;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 public abstract class CommonHandler implements TcpHandler {
     // 日志
     protected Logger log = Logger.getLogger(this.getClass().getName());
+    // 字符编码 默认UTF-8编码
+    Charset charset = Charset.forName("UTF-8");
 
     protected void verify(byte[] data, byte[] key, byte[] sign) throws IOException {
         if (RSA.verify(data, key, sign)) {

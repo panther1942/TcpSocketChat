@@ -99,29 +99,28 @@ public class Main {
                 String[] command = getParam(line);
                 try {
                     switch (command[0]) {
-                        case "show":
-                            server.display();
-                            break;
                         case "send":
-                            server.send(command[1], command[2]);
+                            server.service(ServerHandler.Function.SEND, command);
                             break;
                         case "file":
-                            server.sendFile(command[1], new File(command[2]));
-                            break;
-                        case "kill":
-                            String client = command[1];
-                            server.close(client);
+                            server.service(ServerHandler.Function.FILE, command);
                             break;
                         case "encrypt":
-                            server.encrypt(command[1]);
+                            server.service(ServerHandler.Function.ENCRYPT, command);
+                            break;
+                        case "show":
+                            server.service(ServerHandler.Function.SHOW);
+                            break;
+                        case "kill":
+                            server.service(ServerHandler.Function.KILL, command);
                             break;
                         default:
                             log.warn("命令无效: " + line);
-                            serverTip();
+                            server.tip();
                     }
                 } catch (StringIndexOutOfBoundsException e) {
                     log.warn("命令无效: " + line);
-                    serverTip();
+                    server.tip();
                 }
             }
             // 循环结束关闭服务器
@@ -151,50 +150,30 @@ public class Main {
                 try {
                     switch (command[0]) {
                         case "send":
-                            StringBuffer buf = new StringBuffer();
-                            for (int i = 2; i < command.length; i++) {
-                                buf.append(command[i]);
-                                buf.append(" ");
-                            }
-                            if (command[1].equals("server")) {
-                                client.send(buf.toString());
-                            } else {
-                                client.send(command[1], buf.toString());
-                            }
-
-                            break;
-                        case "encrypt":
-                            client.encrypt();
+                            client.service(ClientHandler.Function.SEND, command);
                             break;
                         case "file":
-                            if (command.length > 2) {
-                                String file = command[1];
-                                String filename = command[2];
-                                client.sendFile(new File(file), filename);
-                            } else {
-                                client.sendFile(new File(command[1]));
-                            }
+                            client.service(ClientHandler.Function.FILE, command);
                             break;
-                        case "name":
-                            client.name(command[1]);
+                        case "encrypt":
+                            client.service(ClientHandler.Function.ENCRYPT);
                             break;
                         case "find":
-                            if (command.length == 1) {
-                                client.find();
-                            } else {
-                                client.find(command[1]);
-                            }
+                            client.service(ClientHandler.Function.FIND, command);
                             break;
-                        case "direct":
-                            client.direct(command[1], command[2]);
+                        case "name":
+                            client.service(ClientHandler.Function.NAME, command);
+                            break;
+                        case "udp":
+                            client.service(ClientHandler.Function.UDP, command);
                             break;
                         default:
                             log.warn("命令无效: " + line);
-                            clientTip();
+                            client.tip();
                     }
                 } catch (ArrayIndexOutOfBoundsException | StringIndexOutOfBoundsException e) {
                     log.warn("命令无效: " + line);
-                    clientTip();
+                    client.tip();
                 }
             }
             // 循环结束关闭客户端
@@ -208,35 +187,9 @@ public class Main {
         }
     }
 
-    private static void clientTip() {
-        System.out.println("\n" +
-                "send 发送消息给服务器\n" +
-                "     发送消息给指定的连接\n" +
-                "  例:talk Hello World\n" +
-                "     talk id0 Hello World" +
-                "encrypt 请求加密通信\n" +
-                "name 注册昵称" +
-                "find 显示服务器接入的连接\n" +
-                "file 发送文件给服务器 (文件名不要出现#)\n" +
-                "  例:file#/var/www/html/index.html\n" +
-                "exit 退出\n");
-    }
-
-    private static void serverTip() {
-        System.out.println("\nshow 显示当前接入的连接\n" +
-                "send 发送消息给指定的连接\n" +
-                "  例:send#id0:Hello World\n" +
-                "encrypt 请求加密通信\n" +
-                "  例:encrypt#id0" +
-                "file 发送文件给指定的连接 (文件名不要出现#)\n" +
-                "  例:file#id0:/var/www/html/index.html\n" +
-                "kill 强制指定的连接下线\n" +
-                "exit 退出\n");
-    }
-
     private static String[] getParam(String line) {
         List<String> list = new ArrayList<>();
-        String regex = "(\"[^\".]+\"|\\S+)";
+        String regex = "(\"[[^\"].]+\"|\'[[^\'].]+\'|[\\S]+)";
         Pattern p = Pattern.compile(regex);
         Matcher m = p.matcher(line);
         while (m.find()) {

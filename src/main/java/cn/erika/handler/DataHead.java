@@ -3,29 +3,30 @@ package cn.erika.handler;
 import java.util.Date;
 
 public class DataHead {
-    static final int LEN = 13 + 10 + 10 + 4 + 256;
-
     public enum Order {
         HELLO_WORLD(0x00),
         ASC(0x01),
         BIN(0x02),
-        FILE_RECEIVE_READY(0x03),
-        FILE_RECEIVE_REFUSE(0x04),
-        FILE_RECEIVE_FINISHED(0x05),
-        DEBUG(0x10),
-        INFO(0x11),
-        WARN(0x12),
-        ERROR(0x13),
-        ENCRYPT(0x14),
-        RSA(0x21),
-        AES(0x22),
-        NAME(0x23),
-        FIND(0x24),
-        TALK(0x25),
-        HIDE(0x26),
-        SEEK(0x27),
-        DIRECT(0x29),
-        REMOTE_ADDRESS(0x28),
+        LOG_DEBUG(0x03),
+        LOG_INFO(0x04),
+        LOG_WARN(0x05),
+        LOG_ERROR(0x06),
+        ENCRYPT(0x10),
+        ENCRYPT_RSA(0x11),
+        ENCRYPT_AES(0x12),
+        FILE_RECEIVE_READY(0x20),
+        FILE_RECEIVE_REFUSE(0x21),
+        FILE_RECEIVE_FINISHED(0x22),
+        FIND(0x30),
+        FORWARD(0x31),
+        NICKNAME(0x32),
+        NICKNAME_SUCCESS(0x33),
+        NICKNAME_FAILED(0x34),
+        NICKNAME_ALLOW_FIND(0x35),
+        NICKNAME_REFUSE_FIND(0x36),
+        UDP(0x40),
+        UDP_REMOTE_ADDRESS(0x41),
+        UDP_NOT_FOUNT(0x42),
         BYE(0xFF);
 
         public int value;
@@ -43,6 +44,7 @@ public class DataHead {
             return null;
         }
     }
+    static final int LEN = 13 + 10 + 10 + 4 + 256;
 
     // 时间戳 13
     private Date timestamp;

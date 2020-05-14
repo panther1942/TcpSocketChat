@@ -1,7 +1,6 @@
 package cn.erika.handler;
 
 import cn.erika.core.Attribute;
-import org.apache.log4j.Logger;
 
 import cn.erika.core.TcpSocket;
 import cn.erika.plugins.security.AES;
@@ -19,10 +18,6 @@ import java.util.HashMap;
 public abstract class DefaultHandler extends CommonHandler {
     private static DecimalFormat df = new DecimalFormat("#.00%");
 
-    // 日志
-    protected Logger log = Logger.getLogger(this.getClass().getName());
-    // 字符编码 默认UTF-8编码
-    Charset charset = Charset.forName("UTF-8");
     // RSA密钥对
     byte[][] keyPair;
     // 缓冲区大小 默认值4K
@@ -130,38 +125,38 @@ public abstract class DefaultHandler extends CommonHandler {
                     log.info("对方请求启用加密: " + socket.getSocket().getRemoteSocketAddress());
                     socket.setAttr(Extra.PUBLIC_KEY, data);
                     log.debug("发送自身的公钥");
-                    write(socket, keyPair[0], new DataHead(DataHead.Order.RSA));
+                    write(socket, keyPair[0], new DataHead(DataHead.Order.ENCRYPT_RSA));
                     break;
                 // 收到对方公钥
-                case RSA:
+                case ENCRYPT_RSA:
                     log.debug("收到对方公钥");
                     socket.setAttr(Extra.PUBLIC_KEY, data);
                     password = AES.randomPassword(20);
                     socket.setAttr(Extra.PASSWORD, password);
                     try {
                         log.debug("发送AES秘钥: [" + password + "]");
-                        write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.AES));
+                        write(socket, RSA.encryptByPublicKey(password.getBytes(charset), data), new DataHead(DataHead.Order.ENCRYPT_AES));
                         socket.setAttr(Extra.ENCRYPT, true);
                         System.out.println("通信已加密");
                     } catch (Exception e) {
                         log.error(e.getMessage());
-                        write(socket, "客户端不支持这种加密方式: AES", DataHead.Order.ERROR);
+                        write(socket, "客户端不支持这种加密方式: AES", DataHead.Order.LOG_ERROR);
                         e.printStackTrace();
                     }
                     break;
                 // 收到对方发送的AES秘钥
-                case AES:
+                case ENCRYPT_AES:
                     try {
                         password = new String(RSA.decryptByPrivateKey(data, keyPair[1]), charset);
                         log.info("加密协商完成");
                         log.debug("收到AES密钥");
                         socket.setAttr(Extra.PASSWORD, password);
                         socket.setAttr(Extra.ENCRYPT, true);
-                        write(socket, "加密协商成功", DataHead.Order.INFO);
+                        write(socket, "加密协商成功", DataHead.Order.LOG_INFO);
                         System.out.println("通信已加密");
                     } catch (Exception e) {
                         log.error(e.getMessage());
-                        write(socket, "服务器错误", DataHead.Order.ERROR);
+                        write(socket, "服务器错误", DataHead.Order.LOG_ERROR);
                         e.printStackTrace();
                     }
                     break;
@@ -201,16 +196,16 @@ public abstract class DefaultHandler extends CommonHandler {
                     }
                     break;
                 // 收到文字及其他无需处理的消息 直接打印出来
-                case DEBUG:
+                case LOG_DEBUG:
                     log.debug(new String(data, charset));
                     break;
-                case INFO:
+                case LOG_INFO:
                     log.info(new String(data, charset));
                     break;
-                case WARN:
+                case LOG_WARN:
                     log.warn(new String(data, charset));
                     break;
-                case ERROR:
+                case LOG_ERROR:
                     log.error(new String(data, charset));
                     break;
                 case ASC:

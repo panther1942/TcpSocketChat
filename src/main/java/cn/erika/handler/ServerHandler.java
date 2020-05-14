@@ -12,6 +12,20 @@ public class ServerHandler extends DefaultHandler {
     private TcpServer server;
     private SocketManager manager = new SocketManager();
 
+    public enum Function {
+        SEND(0x00),
+        FILE(0x01),
+        ENCRYPT(0x02),
+        SHOW(0x03),
+        KILL(0x04);
+
+        private int code;
+
+        Function(int code) {
+            this.code = code;
+        }
+    }
+
     public void listen(InetSocketAddress address) throws IOException {
         server = new TcpServer(address, this);
         server.listen();
@@ -29,26 +43,6 @@ public class ServerHandler extends DefaultHandler {
     }
 
     @Override
-    public void close(TcpSocket socket) {
-        String add = socket.getSocket().getRemoteSocketAddress().toString();
-        String id = manager.get(socket);
-        try {
-            if (!socket.isClosed()) {
-                log.info("正在关闭连接 User: " + id + " From: " + add);
-                System.out.println("正在关闭连接 User: " + id + " From: " + add);
-                socket.close();
-            }
-        } catch (IOException e) {
-            log.warn("连接已经中断");
-        } finally {
-            log.warn("连接中断 User:" + id + " From: " + add);
-            System.out.println("连接中断 User:" + id + " From: " + add);
-        }
-
-        manager.del(socket);
-    }
-
-    @Override
     public void read(TcpSocket socket, byte[] data, int len) throws IOException {
         manager.getCache(socket).read(socket, data, len);
     }
@@ -58,17 +52,17 @@ public class ServerHandler extends DefaultHandler {
         String nickName;
         TcpSocket dest = null;
         switch (head.getOrder()) {
-            case NAME:
+            case NICKNAME:
                 // 注册
                 nickName = new String(data, charset);
                 if ("".equals(nickName)) {
-                    write(socket, "昵称不能为空", DataHead.Order.WARN);
+                    write(socket, "昵称不能为空", DataHead.Order.NICKNAME_FAILED);
                 } else {
                     if (manager.getByNickname(nickName) != null) {
-                        write(socket, "昵称已被使用", DataHead.Order.WARN);
+                        write(socket, "昵称已被使用", DataHead.Order.NICKNAME_FAILED);
                     } else {
                         socket.setAttr(Extra.NICKNAME, nickName);
-                        write(socket, "昵称注册成功", DataHead.Order.INFO);
+                        write(socket, "昵称注册成功", DataHead.Order.NICKNAME_SUCCESS);
                     }
                 }
                 break;
@@ -93,7 +87,7 @@ public class ServerHandler extends DefaultHandler {
                 }
                 write(socket, buffer.toString());
                 break;
-            case TALK:
+            case FORWARD:
                 // 聊天
                 String tmp = new String(data, charset);
                 String nickname = tmp.split(":")[0];
@@ -104,31 +98,31 @@ public class ServerHandler extends DefaultHandler {
                             "dst[" + dest.getSocket().getRemoteSocketAddress() + "]\n" +
                             "msg[" + message + "]");
                     String from = socket.getAttr(Extra.NICKNAME);
-                    write(dest, from + ":" + message);
+                    write(dest, from + ": " + message);
                 } else {
                     write(socket, "未找到昵称: " + nickname);
                 }
                 break;
-            case HIDE:
-                // 不允许查找
-                socket.setAttr(Extra.HIDE, true);
-                write(socket, "已禁止查找");
-                break;
-            case SEEK:
+            case NICKNAME_ALLOW_FIND:
                 // 允许查找
                 socket.setAttr(Extra.HIDE, false);
                 write(socket, "已允许查找");
                 break;
-            case DIRECT:
+            case NICKNAME_REFUSE_FIND:
+                // 不允许查找
+                socket.setAttr(Extra.HIDE, true);
+                write(socket, "已禁止查找");
+                break;
+            case UDP:
                 String msg = new String(data, charset);
                 dest = manager.get(msg.split("#")[0]);
                 int port = Integer.parseInt(msg.split("#")[1]);
                 if (dest != null) {
                     String src = manager.get(socket);
                     String srcRemote = src + "#" + socket.getSocket().getRemoteSocketAddress().toString().substring(1).split(":")[0] + ":" + port;
-                    write(dest, srcRemote, DataHead.Order.REMOTE_ADDRESS);
+                    write(dest, srcRemote, DataHead.Order.UDP_REMOTE_ADDRESS);
                 } else {
-                    write(socket, "未找到连接: " + msg);
+                    write(socket, msg, DataHead.Order.UDP_NOT_FOUNT);
                 }
                 break;
             default:
@@ -144,12 +138,92 @@ public class ServerHandler extends DefaultHandler {
         System.out.println((isEncrypt ? "" : "!") + "User: " + id + " From: [" + add + ":" + socket.getSocket().getPort() + "]" + message);
     }
 
-    public void send(String target, String msg) throws IOException, IllegalArgumentException {
-        TcpSocket socket = manager.get(target);
-        if (socket == null) {
-            throw new IllegalArgumentException("连接不存在");
+    @Override
+    public void close(TcpSocket socket) {
+        String add = socket.getSocket().getRemoteSocketAddress().toString();
+        String id = manager.get(socket);
+        try {
+            if (!socket.isClosed()) {
+                log.info("正在关闭连接 User: " + id + " From: " + add);
+                System.out.println("正在关闭连接 User: " + id + " From: " + add);
+                socket.close();
+            }
+        } catch (IOException e) {
+            log.warn("连接已经中断");
+        } finally {
+            log.warn("连接中断 User:" + id + " From: " + add);
+            System.out.println("连接中断 User:" + id + " From: " + add);
         }
-        write(socket, msg);
+
+        manager.del(socket);
+    }
+
+    public void service(Function function, String... args) throws IOException {
+        TcpSocket socket;
+        switch (function) {
+            case SEND:
+                socket = manager.get(args[1]);
+                if (socket == null) {
+                    throw new IllegalArgumentException("连接不存在");
+                }
+                StringBuffer buf = new StringBuffer();
+                for (int i = 2; i < args.length; i++) {
+                    buf.append(args[i]);
+                    buf.append(" ");
+                }
+                write(socket, buf.toString());
+                break;
+            case FILE:
+                socket = manager.get(args[1]);
+                if (socket == null) {
+                    log.warn("连接不存在");
+                    System.err.println("连接不存在");
+                } else {
+                    File file = new File(args[2]);
+                    sendFileHead(socket, file, file.getAbsolutePath());
+                }
+                break;
+            case ENCRYPT:
+                log.info("请求加密通信");
+                System.out.println("请求加密通信");
+                socket = manager.get(args[1]);
+                if (socket == null) {
+                    log.warn("连接不存在");
+                    System.err.println("连接不存在");
+                } else {
+                    write(socket, "Hello World", DataHead.Order.HELLO_WORLD);
+                }
+                break;
+            case KILL:
+                socket = manager.get(args[1]);
+                if (socket != null) {
+                    manager.del(socket);
+                    write(socket, "See you later", DataHead.Order.BYE);
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(15000);
+                            if (!socket.isClosed()) {
+                                log.warn("等待超时 强制关闭连接");
+                                socket.close();
+                            }
+                        } catch (InterruptedException e) {
+                            log.error("线程被关闭");
+                        } catch (IOException e) {
+                            log.error(e.getMessage());
+                        }
+                    }).start();
+
+                }
+                break;
+            case SHOW:
+                System.out.println("当前接入数量: " + manager.size());
+                for (String link : manager.linksInfo()) {
+                    System.out.println(link);
+                }
+                break;
+            default:
+                System.out.println("不支持的命令");
+        }
     }
 
     public void close() throws IOException {
@@ -162,54 +236,16 @@ public class ServerHandler extends DefaultHandler {
         server.shutdown();
     }
 
-    public void close(String key) throws IOException {
-        TcpSocket socket = manager.get(key);
-        if (socket != null) {
-            manager.del(socket);
-            write(socket, "See you later", DataHead.Order.BYE);
-            new Thread(() -> {
-                try {
-                    Thread.sleep(15000);
-                    if (!socket.isClosed()) {
-                        log.warn("等待超时 强制关闭连接");
-                        socket.close();
-                    }
-                } catch (InterruptedException e) {
-                    log.error("线程被关闭");
-                } catch (IOException e) {
-                    log.error(e.getMessage());
-                }
-            }).start();
-
-        }
-    }
-
-    public void display() {
-        System.out.println("当前接入数量: " + manager.size());
-        for (String link : manager.linksInfo()) {
-            System.out.println(link);
-        }
-    }
-
-    public void encrypt(String key) throws IOException {
-        log.info("请求加密通信");
-        System.out.println("请求加密通信");
-        TcpSocket socket = manager.get(key);
-        if (socket == null) {
-            log.warn("连接不存在");
-            System.err.println("连接不存在");
-        } else {
-            write(socket, "Hello World", DataHead.Order.HELLO_WORLD);
-        }
-    }
-
-    public void sendFile(String key, File file) throws IOException {
-        TcpSocket socket = manager.get(key);
-        if (socket == null) {
-            log.warn("连接不存在");
-            System.err.println("连接不存在");
-        } else {
-            sendFileHead(socket, file, file.getAbsolutePath());
-        }
+    public void tip() {
+        System.out.println("\nshow 显示当前接入的连接\n" +
+                "send 发送消息给指定的连接\n" +
+                "  例:send id0 Hello World\n" +
+                "file 发送文件给指定的连接\n" +
+                "  例:file id0 /var/www/html/index.html\n" +
+                "     file /var/www/html/index.html index\n" +
+                "encrypt 请求加密通信\n" +
+                "  例:encrypt id0" +
+                "kill 强制指定的连接下线\n" +
+                "exit 退出\n");
     }
 }
