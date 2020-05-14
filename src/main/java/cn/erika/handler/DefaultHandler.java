@@ -131,6 +131,12 @@ public abstract class DefaultHandler extends CommonHandler {
                     System.out.println("对方拒绝接收文件");
                     break;
                 case ASC:
+                    display(socket, message);
+                    write(socket, "收到信息", DataHead.Order.ENCRYPT_CONFIRM);
+                    break;
+                case ASC_CONFIRM:
+                    display(socket, message);
+                    break;
                 case ENCRYPT_CONFIRM:
                     display(socket, message);
                     write(socket, "", DataHead.Order.ENCRYPT_CONFIRM);

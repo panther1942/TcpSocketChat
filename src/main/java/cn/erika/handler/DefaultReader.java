@@ -44,7 +44,7 @@ public class DefaultReader implements Reader {
                 System.arraycopy(data, 0, cache, pos, available);
                 pos += available;
                 // 将缓冲区交给处理器处理
-                socket.deal(head, cache);
+                handler.deal(socket, head, cache);
                 // 清空缓冲区 写入偏移量归零 数据头置空
                 cache = new byte[0];
                 pos = 0;
@@ -70,7 +70,7 @@ public class DefaultReader implements Reader {
         // 或者请求头中数据长度就是0 说明这一轮的数据都拿到了 开始处理并清空缓冲区,偏移量归零,数据头置空
         if (pos == cache.length && pos > 0 || head.getLen() == 0) {
             log.debug("数据完整 开始处理");
-            socket.deal(head, cache);
+            handler.deal(socket, head, cache);
             cache = new byte[0];
             pos = 0;
             head = null;

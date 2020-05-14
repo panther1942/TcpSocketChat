@@ -19,7 +19,8 @@ public class DataHead {
         LOG_INFO(0x04),
         LOG_WARN(0x05),
         LOG_ERROR(0x06),
-        ENCRYPT_CONFIRM(0x07),
+        ASC_CONFIRM(0x07),
+        ENCRYPT_CONFIRM(0x08),
         // 客户端请求加密,服务器发送自身公钥
         ENCRYPT(0x10),
         // 服务器返回自身的公钥,客户端使用公钥加密AES秘钥

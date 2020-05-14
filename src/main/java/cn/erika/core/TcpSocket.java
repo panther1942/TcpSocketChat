@@ -134,10 +134,6 @@ public class TcpSocket implements Runnable {
         out.flush();
     }
 
-    public void deal(DataHead head, byte[] data) throws IOException {
-        handler.deal(this, head, data);
-    }
-
     public void close() throws IOException {
         if (!socket.isClosed()) {
             socket.close();
