@@ -14,7 +14,7 @@ import java.text.DecimalFormat;
 import java.util.HashMap;
 
 public abstract class DefaultHandler extends CommonHandler {
-    private static DecimalFormat df = new DecimalFormat("#.00%");
+    private static DecimalFormat df = new DecimalFormat("0.00%");
     // RSA密钥对
     byte[][] keyPair;
     // 缓冲区大小 默认值4K
@@ -132,14 +132,10 @@ public abstract class DefaultHandler extends CommonHandler {
                     break;
                 case ASC:
                     display(socket, message);
-                    write(socket, "收到信息", DataHead.Order.ENCRYPT_CONFIRM);
+                    write(socket, "收到信息", DataHead.Order.ASC_CONFIRM);
                     break;
                 case ASC_CONFIRM:
-                    display(socket, message);
-                    break;
-                case ENCRYPT_CONFIRM:
-                    display(socket, message);
-                    write(socket, "", DataHead.Order.ENCRYPT_CONFIRM);
+//                    display(socket, message);
                     break;
                 // 收到文件
                 case BIN:

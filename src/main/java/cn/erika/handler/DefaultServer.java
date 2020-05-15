@@ -37,7 +37,7 @@ public class DefaultServer extends DefaultHandler {
     }
 
     @Override
-    public void accept(TcpSocket socket) throws IOException {
+    public synchronized void accept(TcpSocket socket) throws IOException {
         log.info("客户端接入: " +
                 socket.getSocket().getRemoteSocketAddress().toString());
         System.out.println("客户端接入: " +

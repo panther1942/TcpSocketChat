@@ -47,14 +47,17 @@ public class TcpSocket implements Runnable {
         this.handler = handler;
         this.attr = new HashMap();
         this.socket = socket;
+        this.socket.setTcpNoDelay(true);
         this.localAddress = this.socket.getRemoteSocketAddress();
         init();
     }
 
     TcpSocket(InetSocketAddress address, TcpHandler handler) throws IOException {
         this.handler = handler;
+        this.attr = new HashMap();
         this.socket = new Socket();
         this.socket.setReuseAddress(true);
+        this.socket.setTcpNoDelay(true);
         this.socket.connect(address);
         this.localAddress = this.socket.getRemoteSocketAddress();
         init();
@@ -104,8 +107,9 @@ public class TcpSocket implements Runnable {
                 handler.read(this, cache, len);
             }
         } catch (IOException e) {
-            log.warn("与服务器失去连接: " + socket.getRemoteSocketAddress().toString());
-            System.out.println("连接中断");
+            log.warn("连接中断: " + socket.getRemoteSocketAddress().toString());
+            log.debug(e.getMessage());
+            System.out.println("连接中断: " + socket.getRemoteSocketAddress().toString());
         } finally {
             try {
                 close();

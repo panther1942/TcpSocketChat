@@ -134,6 +134,9 @@ public class DefaultClient extends DefaultHandler {
                     e.printStackTrace();
                 }
                 break;
+            case ENCRYPT_CONFIRM:
+                display(socket, message);
+                break;
             case FILE_RECEIVE_FINISHED:
                 log.info("文件传输完成: " + message);
                 System.out.println("文件传输完成: " + message);
